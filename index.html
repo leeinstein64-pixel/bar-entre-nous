@@ -6,6 +6,8 @@
 
     <title>Entre Nous Bar | Événements & Réservations</title>
 
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+
     <style>
         * {
             margin: 0;
@@ -1036,57 +1038,12 @@
 
                         <!-- TABLES -->
                         <div id="tableOptions" class="space-options">
-
-                            <label class="space-option">
-                                <input type="radio" name="space" value="A01" data-price="15000" required>
-                                <span class="space-card">
-                                    <strong>Table A01</strong>
-                                    <span>Jusqu'à 4 personnes</span>
-                                    <b>15 000 FCFA</b>
-                                </span>
-                            </label>
-
-                            <label class="space-option">
-                                <input type="radio" name="space" value="A02" data-price="15000">
-                                <span class="space-card">
-                                    <strong>Table A02</strong>
-                                    <span>Jusqu'à 4 personnes</span>
-                                    <b>15 000 FCFA</b>
-                                </span>
-                            </label>
-
-                            <label class="space-option">
-                                <input type="radio" name="space" value="A03" data-price="15000">
-                                <span class="space-card">
-                                    <strong>Table A03</strong>
-                                    <span>Jusqu'à 6 personnes</span>
-                                    <b>15 000 FCFA</b>
-                                </span>
-                            </label>
-
+                            <p style="color:#999;">Chargement des tables...</p>
                         </div>
 
                         <!-- SALONS -->
                         <div id="salonOptions" class="space-options hidden">
-
-                            <label class="space-option">
-                                <input type="radio" name="space" value="Salon 01" data-price="55000">
-                                <span class="space-card">
-                                    <strong>Salon 01</strong>
-                                    <span>Jusqu'à 10 personnes</span>
-                                    <b>55 000 FCFA</b>
-                                </span>
-                            </label>
-
-                            <label class="space-option">
-                                <input type="radio" name="space" value="Salon 02" data-price="95000">
-                                <span class="space-card">
-                                    <strong>Salon 02</strong>
-                                    <span>Jusqu'à 15 personnes</span>
-                                    <b>95 000 FCFA</b>
-                                </span>
-                            </label>
-
+                            <p style="color:#999;">Chargement des salons...</p>
                         </div>
 
                     </div>
@@ -1280,6 +1237,12 @@
 
     <script>
 
+        // ---------- CONFIGURATION SUPABASE ----------
+        const SUPABASE_URL = "https://kimrreeelrkkmofrrccw.supabase.co";
+        const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImtpbXJyZWVlbHJra21vZnJyY2N3Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODk4NjQ4MDksImV4cCI6MjEwNTQ0MDgwOX0.PTEckXwaBWCOgS75Xo7X4G7taGgPsvDursSg9gcqCWE";
+
+        const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
         function toggleMenu() {
             const nav = document.getElementById("nav");
             nav.classList.toggle("active");
@@ -1310,11 +1273,62 @@
             return `${jour}/${mois}/${annee}`;
         }
 
+        /* ---------- RESERVATION : CHARGEMENT DES TABLES / SALONS ---------- */
+
+        const tableOptions = document.getElementById("tableOptions");
+        const salonOptions = document.getElementById("salonOptions");
+
+        async function chargerEspaces() {
+            const { data, error } = await supabaseClient
+                .from("tables_salons")
+                .select("*")
+                .eq("actif", true)
+                .order("identifiant", { ascending: true });
+
+            if (error || !data) {
+                tableOptions.innerHTML = '<p style="color:#e63946;">Impossible de charger les tables.</p>';
+                salonOptions.innerHTML = '<p style="color:#e63946;">Impossible de charger les salons.</p>';
+                console.error(error);
+                return;
+            }
+
+            const tables = data.filter(function (e) { return e.type === "table"; });
+            const salons = data.filter(function (e) { return e.type === "salon"; });
+
+            function construireOptions(container, liste) {
+                if (liste.length === 0) {
+                    container.innerHTML = '<p style="color:#999;">Aucun espace disponible pour l\'instant.</p>';
+                    return;
+                }
+
+                container.innerHTML = "";
+
+                liste.forEach(function (espace) {
+                    const label = document.createElement("label");
+                    label.className = "space-option";
+                    label.innerHTML = `
+                        <input type="radio" name="space" value="${espace.identifiant}"
+                               data-id="${espace.id}"
+                               data-price="${espace.prix}">
+                        <span class="space-card">
+                            <strong>${espace.identifiant}</strong>
+                            <span>Jusqu'à ${espace.capacite} personnes</span>
+                            <b>${formatFCFA(espace.prix)}</b>
+                        </span>
+                    `;
+                    container.appendChild(label);
+
+                    label.querySelector("input").addEventListener("change", updateSummary);
+                });
+            }
+
+            construireOptions(tableOptions, tables);
+            construireOptions(salonOptions, salons);
+        }
+
         /* ---------- RESERVATION : TYPE TABLE / SALON ---------- */
 
         const typeButtons = document.querySelectorAll(".reservation-type-btn");
-        const tableOptions = document.getElementById("tableOptions");
-        const salonOptions = document.getElementById("salonOptions");
         const reservationTypeInput = document.getElementById("reservationType");
 
         typeButtons.forEach(function (btn) {
@@ -1378,15 +1392,17 @@
             el.addEventListener("input", updateSummary);
         });
 
-        document.querySelectorAll('input[name="space"]').forEach(function (radio) {
-            radio.addEventListener("change", updateSummary);
-        });
-
-        updateSummary();
-
         /* ---------- RESERVATION : ENVOI DU FORMULAIRE ---------- */
 
-        document.getElementById("reservationForm").addEventListener("submit", function (e) {
+        function genererReference() {
+            const nombre = Math.floor(100000 + Math.random() * 900000);
+            return "ENB-" + nombre;
+        }
+
+        const reservationForm = document.getElementById("reservationForm");
+        const submitBtn = reservationForm.querySelector(".reservation-submit");
+
+        reservationForm.addEventListener("submit", async function (e) {
             e.preventDefault();
 
             const espaceSelectionne = document.querySelector('input[name="space"]:checked');
@@ -1401,11 +1417,62 @@
                 return;
             }
 
-            const nom = document.getElementById("customerName").value;
-            const telephone = document.getElementById("customerPhone").value;
+            const nom = document.getElementById("customerName").value.trim();
+            const telephone = document.getElementById("customerPhone").value.trim();
             const prix = parseInt(espaceSelectionne.dataset.price, 10);
+            const tableId = parseInt(espaceSelectionne.dataset.id, 10);
+            const nombrePersonnes = parseInt(reservationGuestsInput.value, 10);
+
+            submitBtn.disabled = true;
+            submitBtn.textContent = "Vérification de la disponibilité...";
+
+            // 1. Creer le client
+            const { data: client, error: clientError } = await supabaseClient
+                .from("clients")
+                .insert([{ nom: nom, telephone: telephone }])
+                .select()
+                .single();
+
+            if (clientError || !client) {
+                alert("Une erreur est survenue, merci de réessayer.");
+                console.error(clientError);
+                submitBtn.disabled = false;
+                submitBtn.textContent = "Continuer vers le paiement";
+                return;
+            }
+
+            // 2. Creer la reservation (bloquee automatiquement si deja prise
+            //    grace a la contrainte unique table_salon_id + date + heure)
+            const reference = genererReference();
+
+            const { error: reservationError } = await supabaseClient
+                .from("reservations")
+                .insert([{
+                    reference: reference,
+                    client_id: client.id,
+                    table_salon_id: tableId,
+                    date_reservation: reservationDateInput.value,
+                    heure_reservation: reservationTimeInput.value,
+                    nombre_personnes: nombrePersonnes,
+                    montant: prix,
+                    statut: "en_attente"
+                }]);
+
+            submitBtn.disabled = false;
+            submitBtn.textContent = "Continuer vers le paiement";
+
+            if (reservationError) {
+                if (reservationError.code === "23505") {
+                    alert("Cet espace est déjà réservé à cette date et cette heure. Merci de choisir un autre créneau ou un autre espace.");
+                } else {
+                    alert("Une erreur est survenue, merci de réessayer.");
+                    console.error(reservationError);
+                }
+                return;
+            }
 
             const recapHtml = `
+                <div><span>Référence</span><strong>${reference}</strong></div>
                 <div><span>Nom</span><strong>${nom}</strong></div>
                 <div><span>Téléphone</span><strong>${telephone}</strong></div>
                 <div><span>Date</span><strong>${formatDateFr(reservationDateInput.value)}</strong></div>
@@ -1416,11 +1483,17 @@
             `;
 
             openModal(
-                "Récapitulatif de votre réservation",
+                "Réservation enregistrée !",
                 recapHtml,
-                "Ceci n'est pas encore une confirmation définitive : le paiement Airtel Money / Moov Money et la génération du numéro de référence seront branchés ici dès que le backend sera prêt."
+                "Garde bien ta référence. Le paiement Airtel Money / Moov Money sera branché ici prochainement pour confirmer définitivement ta réservation."
             );
+
+            reservationForm.reset();
+            updateSummary();
         });
+
+        chargerEspaces();
+        updateSummary();
 
     </script>
 

@@ -1,0 +1,214 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Connexion | Entre Nous Bar</title>
+
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: Arial, sans-serif;
+            background: #080808;
+            color: white;
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+        }
+
+        .login-box {
+            width: 100%;
+            max-width: 380px;
+            background: #141414;
+            border: 1px solid #292929;
+            border-radius: 15px;
+            padding: 35px;
+        }
+
+        h1 {
+            font-size: 22px;
+            text-align: center;
+            margin-bottom: 5px;
+        }
+
+        .subtitle {
+            text-align: center;
+            color: #999;
+            font-size: 14px;
+            margin-bottom: 30px;
+        }
+
+        .form-group {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+            margin-bottom: 20px;
+        }
+
+        .form-group label {
+            font-size: 14px;
+            color: #ccc;
+        }
+
+        .form-group input {
+            background: #0b0b0b;
+            border: 1px solid #292929;
+            border-radius: 8px;
+            padding: 12px 14px;
+            color: white;
+            font-size: 15px;
+        }
+
+        .form-group input:focus {
+            outline: none;
+            border-color: #e63946;
+        }
+
+        .login-submit {
+            width: 100%;
+            padding: 14px;
+            border: none;
+            border-radius: 8px;
+            background: #e63946;
+            color: white;
+            font-size: 16px;
+            font-weight: bold;
+            cursor: pointer;
+            transition: 0.3s;
+        }
+
+        .login-submit:hover {
+            background: #ff4d5a;
+        }
+
+        .login-submit:disabled {
+            background: #444;
+            cursor: not-allowed;
+        }
+
+        .message {
+            margin-top: 18px;
+            text-align: center;
+            font-size: 14px;
+            min-height: 20px;
+        }
+
+        .message.error {
+            color: #e63946;
+        }
+
+        .message.success {
+            color: #4ade80;
+        }
+    </style>
+</head>
+
+<body>
+
+    <div class="login-box">
+
+        <h1>ENTRE NOUS BAR</h1>
+        <p class="subtitle">Espace employés</p>
+
+        <form id="loginForm">
+
+            <div class="form-group">
+                <label for="email">Email</label>
+                <input type="email" id="email" required autocomplete="username">
+            </div>
+
+            <div class="form-group">
+                <label for="password">Mot de passe</label>
+                <input type="password" id="password" required autocomplete="current-password">
+            </div>
+
+            <button type="submit" class="login-submit" id="submitBtn">
+                Se connecter
+            </button>
+
+            <p class="message" id="message"></p>
+
+        </form>
+
+    </div>
+
+    <script>
+
+        // ---------- CONFIGURATION SUPABASE ----------
+        const SUPABASE_URL = "https://kimrreeelrkkmofrrccw.supabase.co";
+        const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImtpbXJyZWVlbHJra21vZnJyY2N3Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODk4NjQ4MDksImV4cCI6MjEwNTQ0MDgwOX0.PTEckXwaBWCOgS75Xo7X4G7taGgPsvDursSg9gcqCWE";
+
+        const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+        const form = document.getElementById("loginForm");
+        const messageEl = document.getElementById("message");
+        const submitBtn = document.getElementById("submitBtn");
+
+        function showMessage(text, type) {
+            messageEl.textContent = text;
+            messageEl.className = "message " + type;
+        }
+
+        form.addEventListener("submit", async function (e) {
+            e.preventDefault();
+
+            const email = document.getElementById("email").value.trim();
+            const password = document.getElementById("password").value;
+
+            submitBtn.disabled = true;
+            showMessage("Connexion en cours...", "");
+
+            // 1. Connexion avec Supabase Auth
+            const { data: authData, error: authError } = await supabaseClient.auth.signInWithPassword({
+                email: email,
+                password: password
+            });
+
+            if (authError) {
+                showMessage("Email ou mot de passe incorrect.", "error");
+                submitBtn.disabled = false;
+                return;
+            }
+
+            // 2. Recuperation du role dans la table profils
+            const { data: profil, error: profilError } = await supabaseClient
+                .from("profils")
+                .select("nom, role, actif")
+                .eq("id", authData.user.id)
+                .single();
+
+            if (profilError || !profil) {
+                showMessage("Compte connecte mais aucun profil trouve. Contacte l'administrateur.", "error");
+                submitBtn.disabled = false;
+                return;
+            }
+
+            if (!profil.actif) {
+                showMessage("Ce compte a ete desactive.", "error");
+                await supabaseClient.auth.signOut();
+                submitBtn.disabled = false;
+                return;
+            }
+
+            showMessage("Connecte en tant que " + profil.nom + " (" + profil.role + ")", "success");
+
+            setTimeout(function () {
+                window.location.href = "dashboard.html";
+            }, 600);
+
+            submitBtn.disabled = false;
+        });
+
+    </script>
+
+</body>
+</html>
