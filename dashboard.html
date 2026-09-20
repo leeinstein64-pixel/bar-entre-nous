@@ -6,6 +6,7 @@
     <title>Tableau de bord | Entre Nous Bar</title>
 
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="https://cdn.jsdelivr.net/npm/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
 
     <style>
         * {
@@ -293,6 +294,72 @@
             flex: 1;
         }
 
+        /* ===== SCANNER ===== */
+
+        .scanner-container {
+            max-width: 480px;
+        }
+
+        #qr-reader {
+            width: 100%;
+            border-radius: 15px;
+            overflow: hidden;
+            border: 1px solid #292929;
+        }
+
+        .scanner-manual {
+            display: flex;
+            gap: 10px;
+            margin-top: 20px;
+        }
+
+        .scanner-manual input {
+            flex: 1;
+            background: #0b0b0b;
+            border: 1px solid #292929;
+            border-radius: 8px;
+            padding: 12px 14px;
+            color: white;
+            font-size: 14px;
+        }
+
+        .scanner-result {
+            margin-top: 20px;
+            padding: 20px;
+            border-radius: 12px;
+            display: none;
+        }
+
+        .scanner-result.show {
+            display: block;
+        }
+
+        .scanner-result.valide {
+            background: #0f2a1a;
+            border: 1px solid #4ade80;
+        }
+
+        .scanner-result.deja-utilise {
+            background: #2a1a0f;
+            border: 1px solid #f59e0b;
+        }
+
+        .scanner-result.invalide {
+            background: #2a0f10;
+            border: 1px solid #e63946;
+        }
+
+        .scanner-result h4 {
+            margin-bottom: 10px;
+            font-size: 18px;
+        }
+
+        .scanner-result p {
+            color: #ccc;
+            font-size: 14px;
+            margin-bottom: 4px;
+        }
+
         .hidden {
             display: none !important;
         }
@@ -411,8 +478,18 @@
 
                 <div id="section-scanner" class="section hidden">
                     <h2>Scanner d'entrée</h2>
-                    <div class="placeholder">
-                        Le scanner de QR code pour valider les billets à l'entrée arrive ici.
+
+                    <div class="scanner-container">
+
+                        <div id="qr-reader"></div>
+
+                        <div class="scanner-manual">
+                            <input type="text" id="manualCode" placeholder="Ou tape/colle le code du billet ici">
+                            <button class="btn-primary" id="btnVerifierManuel">Vérifier</button>
+                        </div>
+
+                        <div class="scanner-result" id="scannerResult"></div>
+
                     </div>
                 </div>
 
@@ -536,6 +613,12 @@
             if (cle === "evenements") {
                 chargerEvenements();
             }
+
+            if (cle === "scanner") {
+                demarrerScanner();
+            } else {
+                arreterScanner();
+            }
         }
 
         function construireMenu(role) {
@@ -558,6 +641,8 @@
             });
         }
 
+        let currentProfilId = null;
+
         async function initDashboard() {
             const { data: sessionData } = await supabaseClient.auth.getSession();
 
@@ -567,6 +652,7 @@
             }
 
             const userId = sessionData.session.user.id;
+            currentProfilId = userId;
 
             const { data: profil, error } = await supabaseClient
                 .from("profils")
@@ -669,6 +755,38 @@
             e.preventDefault();
             eventFormMessage.textContent = "";
 
+            let afficheUrl = null;
+            const fichier = document.getElementById("evtAffiche").files[0];
+
+            if (fichier) {
+                eventFormMessage.style.color = "#999";
+                eventFormMessage.textContent = "Envoi de la photo...";
+
+                const nomFichier = Date.now() + "-" + fichier.name.replace(/\s+/g, "-");
+
+                const { error: uploadError } = await supabaseClient
+                    .storage
+                    .from("affiches")
+                    .upload(nomFichier, fichier);
+
+                if (uploadError) {
+                    eventFormMessage.style.color = "#e63946";
+                    eventFormMessage.textContent = "Erreur lors de l'envoi de la photo.";
+                    console.error(uploadError);
+                    return;
+                }
+
+                const { data: urlData } = supabaseClient
+                    .storage
+                    .from("affiches")
+                    .getPublicUrl(nomFichier);
+
+                afficheUrl = urlData.publicUrl;
+            }
+
+            eventFormMessage.style.color = "#999";
+            eventFormMessage.textContent = "Création de l'événement...";
+
             const nouvelEvenement = {
                 nom: document.getElementById("evtNom").value.trim(),
                 description: document.getElementById("evtDescription").value.trim() || null,
@@ -676,7 +794,8 @@
                 heure_evenement: document.getElementById("evtHeure").value,
                 lieu: document.getElementById("evtLieu").value.trim() || null,
                 prix_a_partir_de: document.getElementById("evtPrix").value || null,
-                statut: document.getElementById("evtStatut").value
+                statut: document.getElementById("evtStatut").value,
+                affiche_url: afficheUrl
             };
 
             const { error } = await supabaseClient
@@ -684,6 +803,7 @@
                 .insert([nouvelEvenement]);
 
             if (error) {
+                eventFormMessage.style.color = "#e63946";
                 eventFormMessage.textContent = "Erreur : impossible de créer l'événement.";
                 console.error(error);
                 return;

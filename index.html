@@ -821,90 +821,8 @@
             Découvrez les événements d'Entre Nous Bar.
         </p>
 
-        <div class="event-grid">
-
-            <!-- LOISEAU RARE -->
-            <div class="event-card">
-
-                <img src="loiseau-rare.jpeg" alt="L'oiseau Rare">
-
-                <div class="event-content">
-
-                    <span class="event-status past">
-                        Événement terminé
-                    </span>
-
-                    <h3>l'oiseau Rare</h3>
-
-                    <p>Dimanche 6 septembre 2026</p>
-                    <p>À partir de 15h</p>
-
-                    <button class="event-button" disabled>
-                        Événement terminé
-                    </button>
-
-                </div>
-
-            </div>
-
-
-            <!-- LE VOUGA -->
-            <div class="event-card">
-
-                <img src="vouga.jpeg" alt="Le Vouga du Vendredi">
-
-                <div class="event-content">
-
-                    <span class="event-status current">
-                        En cours
-                    </span>
-
-                    <h3>Le Vouga du Vendredi</h3>
-
-                    <p>Vendredi 18 septembre 2026</p>
-                    <p>À partir de 13h</p>
-
-                    <p class="event-price">
-                        Entrée gratuite
-                    </p>
-
-                    <button class="event-button" onclick="location.hash='#reservations'">
-                        Réserver
-                    </button>
-
-                </div>
-
-            </div>
-
-
-            <!-- FRI-SATDAY -->
-            <div class="event-card">
-
-                <img src="fri.jpeg" alt="Fri-Satday">
-
-                <div class="event-content">
-
-                    <span class="event-status upcoming">
-                        À venir
-                    </span>
-
-                    <h3>Fri-Satday</h3>
-
-                    <p>Vendredi 18 & samedi 19 septembre 2026</p>
-                    <p>À partir de 12h</p>
-
-                    <p class="event-price">
-                        Entrée gratuite
-                    </p>
-
-                    <button class="event-button" onclick="location.hash='#reservations'">
-                        Réserver
-                    </button>
-
-                </div>
-
-            </div>
-
+        <div class="event-grid" id="eventGrid">
+            <p style="color:#999;">Chargement des événements...</p>
         </div>
 
     </section>
@@ -1273,6 +1191,74 @@
             return `${jour}/${mois}/${annee}`;
         }
 
+        /* ---------- EVENEMENTS PUBLICS ---------- */
+
+        const LABELS_STATUT_EVT = {
+            publie: { classe: "upcoming", texte: "À venir" },
+            billetterie_ouverte: { classe: "current", texte: "Billetterie ouverte" },
+            billetterie_fermee: { classe: "past", texte: "Billetterie fermée" },
+            termine: { classe: "past", texte: "Événement terminé" }
+        };
+
+        const JOURS_FR = ["Dimanche", "Lundi", "Mardi", "Mercredi", "Jeudi", "Vendredi", "Samedi"];
+        const MOIS_FR = ["janvier", "février", "mars", "avril", "mai", "juin", "juillet", "août", "septembre", "octobre", "novembre", "décembre"];
+
+        function formatDateLongueFr(valeurISO) {
+            const d = new Date(valeurISO + "T00:00:00");
+            return `${JOURS_FR[d.getDay()]} ${d.getDate()} ${MOIS_FR[d.getMonth()]} ${d.getFullYear()}`;
+        }
+
+        async function chargerEvenementsPublics() {
+            const grid = document.getElementById("eventGrid");
+
+            const { data, error } = await supabaseClient
+                .from("evenements")
+                .select("*")
+                .order("date_evenement", { ascending: true });
+
+            if (error) {
+                grid.innerHTML = '<p style="color:#e63946;">Impossible de charger les événements pour le moment.</p>';
+                console.error(error);
+                return;
+            }
+
+            if (!data || data.length === 0) {
+                grid.innerHTML = '<p style="color:#999;">Aucun événement programmé pour le moment.</p>';
+                return;
+            }
+
+            grid.innerHTML = "";
+
+            data.forEach(function (evt) {
+                const infosStatut = LABELS_STATUT_EVT[evt.statut] || { classe: "upcoming", texte: "À venir" };
+                const estTermine = evt.statut === "termine" || evt.statut === "billetterie_fermee";
+                const prixTexte = evt.prix_a_partir_de
+                    ? "Billet à partir de " + formatFCFA(Number(evt.prix_a_partir_de))
+                    : "Entrée gratuite";
+
+                const card = document.createElement("div");
+                card.className = "event-card";
+
+                card.innerHTML = `
+                    ${evt.affiche_url ? `<img src="${evt.affiche_url}" alt="${evt.nom}">` : ""}
+                    <div class="event-content">
+                        <span class="event-status ${infosStatut.classe}">${infosStatut.texte}</span>
+                        <h3>${evt.nom}</h3>
+                        <p>${formatDateLongueFr(evt.date_evenement)}</p>
+                        <p>À partir de ${evt.heure_evenement.slice(0,5)}</p>
+                        <p class="event-price">${prixTexte}</p>
+                        <button class="event-button" ${estTermine ? "disabled" : "onclick=\"location.hash='#reservations'\""}>
+                            ${estTermine ? infosStatut.texte : "Réserver"}
+                        </button>
+                    </div>
+                `;
+
+                grid.appendChild(card);
+            });
+        }
+
+        chargerEvenementsPublics();
+
         /* ---------- RESERVATION : CHARGEMENT DES TABLES / SALONS ---------- */
 
         const tableOptions = document.getElementById("tableOptions");
@@ -1426,37 +1412,16 @@
             submitBtn.disabled = true;
             submitBtn.textContent = "Vérification de la disponibilité...";
 
-            // 1. Creer le client
-            const { data: client, error: clientError } = await supabaseClient
-                .from("clients")
-                .insert([{ nom: nom, telephone: telephone }])
-                .select()
-                .single();
-
-            if (clientError || !client) {
-                alert("Une erreur est survenue, merci de réessayer.");
-                console.error(clientError);
-                submitBtn.disabled = false;
-                submitBtn.textContent = "Continuer vers le paiement";
-                return;
-            }
-
-            // 2. Creer la reservation (bloquee automatiquement si deja prise
-            //    grace a la contrainte unique table_salon_id + date + heure)
-            const reference = genererReference();
-
-            const { error: reservationError } = await supabaseClient
-                .from("reservations")
-                .insert([{
-                    reference: reference,
-                    client_id: client.id,
-                    table_salon_id: tableId,
-                    date_reservation: reservationDateInput.value,
-                    heure_reservation: reservationTimeInput.value,
-                    nombre_personnes: nombrePersonnes,
-                    montant: prix,
-                    statut: "en_attente"
-                }]);
+            const { data: reference, error: reservationError } = await supabaseClient
+                .rpc("creer_reservation", {
+                    p_nom: nom,
+                    p_telephone: telephone,
+                    p_table_salon_id: tableId,
+                    p_date: reservationDateInput.value,
+                    p_heure: reservationTimeInput.value,
+                    p_personnes: nombrePersonnes,
+                    p_montant: prix
+                });
 
             submitBtn.disabled = false;
             submitBtn.textContent = "Continuer vers le paiement";
