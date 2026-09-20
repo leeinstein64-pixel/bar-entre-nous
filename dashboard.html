@@ -294,6 +294,88 @@
             flex: 1;
         }
 
+        /* ===== ESPACES (TABLES & SALONS) ===== */
+
+        .espace-list {
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+        }
+
+        .espace-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 15px;
+            background: #111;
+            border: 1px solid #292929;
+            border-radius: 10px;
+            padding: 16px 22px;
+        }
+
+        .espace-row .infos strong {
+            display: block;
+            font-size: 16px;
+            margin-bottom: 4px;
+        }
+
+        .espace-row .infos span {
+            color: #999;
+            font-size: 13px;
+        }
+
+        .espace-controles {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            flex-wrap: wrap;
+        }
+
+        .espace-controles label {
+            font-size: 12px;
+            color: #999;
+        }
+
+        .espace-controles input[type="number"] {
+            width: 110px;
+            background: #0b0b0b;
+            border: 1px solid #292929;
+            border-radius: 8px;
+            padding: 8px 10px;
+            color: white;
+            font-size: 14px;
+        }
+
+        .espace-controles select {
+            background: #0b0b0b;
+            border: 1px solid #292929;
+            border-radius: 8px;
+            padding: 8px 10px;
+            color: white;
+            font-size: 13px;
+        }
+
+        .btn-mini {
+            background: #e63946;
+            border: none;
+            color: white;
+            padding: 8px 14px;
+            border-radius: 8px;
+            font-size: 13px;
+            font-weight: bold;
+            cursor: pointer;
+        }
+
+        .btn-mini:hover {
+            background: #ff4d5a;
+        }
+
+        .btn-mini.saved {
+            background: #4ade80;
+            color: #08240f;
+        }
+
         /* ===== SCANNER ===== */
 
         .scanner-container {
@@ -455,6 +537,20 @@
                     </div>
                 </div>
 
+                <div id="section-espaces" class="section hidden">
+                    <h2>Tables & Salons</h2>
+
+                    <div class="section-toolbar">
+                        <button class="btn-primary" id="btnNouvelEspace">
+                            + Nouvel espace
+                        </button>
+                    </div>
+
+                    <div class="espace-list" id="espaceList">
+                        <p style="color:#999;">Chargement des espaces...</p>
+                    </div>
+                </div>
+
                 <div id="section-billets" class="section hidden">
                     <h2>Billets</h2>
                     <div class="placeholder">
@@ -563,6 +659,47 @@
         </div>
     </div>
 
+    <!-- FORMULAIRE NOUVEL ESPACE -->
+    <div class="event-form-overlay" id="espaceFormOverlay">
+        <div class="event-form-box">
+            <h3>Nouvel espace</h3>
+
+            <form id="espaceForm">
+
+                <div class="form-group">
+                    <label for="espIdentifiant">Identifiant (ex : A04, Salon 03)</label>
+                    <input type="text" id="espIdentifiant" required>
+                </div>
+
+                <div class="form-group">
+                    <label for="espType">Type</label>
+                    <select id="espType">
+                        <option value="table">Table</option>
+                        <option value="salon">Salon</option>
+                    </select>
+                </div>
+
+                <div class="form-group">
+                    <label for="espCapacite">Capacité (nombre de personnes)</label>
+                    <input type="number" id="espCapacite" min="1" required>
+                </div>
+
+                <div class="form-group">
+                    <label for="espPrix">Prix (FCFA)</label>
+                    <input type="number" id="espPrix" min="0" required>
+                </div>
+
+                <p class="message" id="espaceFormMessage" style="color:#e63946; margin-bottom:10px;"></p>
+
+                <div class="form-actions">
+                    <button type="button" class="btn-secondary" id="btnAnnulerEspace">Annuler</button>
+                    <button type="submit" class="btn-primary">Créer l'espace</button>
+                </div>
+
+            </form>
+        </div>
+    </div>
+
     <script>
 
         // ---------- CONFIGURATION SUPABASE ----------
@@ -576,6 +713,7 @@
             pdg: [
                 { key: "evenements", label: "Événements" },
                 { key: "reservations", label: "Réservations" },
+                { key: "espaces", label: "Tables & Salons" },
                 { key: "billets", label: "Billets" },
                 { key: "paiements", label: "Paiements" },
                 { key: "comptes", label: "Comptes employés" }
@@ -583,16 +721,19 @@
             administrateur: [
                 { key: "evenements", label: "Événements" },
                 { key: "reservations", label: "Réservations" },
+                { key: "espaces", label: "Tables & Salons" },
                 { key: "billets", label: "Billets" },
                 { key: "paiements", label: "Paiements" },
                 { key: "comptes", label: "Comptes employés" }
             ],
             manager: [
                 { key: "evenements", label: "Événements" },
-                { key: "reservations", label: "Réservations" }
+                { key: "reservations", label: "Réservations" },
+                { key: "espaces", label: "Tables & Salons" }
             ],
             caissiere: [
                 { key: "reservations", label: "Réservations" },
+                { key: "espaces", label: "Tables & Salons" },
                 { key: "paiements", label: "Paiements" }
             ],
             controleur: [
@@ -612,6 +753,10 @@
 
             if (cle === "evenements") {
                 chargerEvenements();
+            }
+
+            if (cle === "espaces") {
+                chargerEspacesDashboard();
             }
 
             if (cle === "scanner") {
@@ -669,7 +814,11 @@
             document.getElementById("userName").textContent = profil.nom;
             document.getElementById("userRole").textContent = profil.role;
 
-            construireMenu(profil.role);
+            try {
+                construireMenu(profil.role);
+            } catch (err) {
+                console.error("Erreur lors de la construction du menu :", err);
+            }
 
             document.getElementById("loadingScreen").classList.add("hidden");
             document.getElementById("dashboard").classList.remove("hidden");
@@ -798,9 +947,11 @@
                 affiche_url: afficheUrl
             };
 
-            const { error } = await supabaseClient
+            const { data: evenementCree, error } = await supabaseClient
                 .from("evenements")
-                .insert([nouvelEvenement]);
+                .insert([nouvelEvenement])
+                .select()
+                .single();
 
             if (error) {
                 eventFormMessage.style.color = "#e63946";
@@ -809,9 +960,260 @@
                 return;
             }
 
+            // Cree automatiquement la zone de billet correspondante, avec le
+            // meme prix que celui affiche, pour que le prix reste toujours
+            // le meme entre la carte evenement et la page d'achat du billet.
+            const { error: zoneError } = await supabaseClient
+                .from("evenement_zones")
+                .insert([{
+                    evenement_id: evenementCree.id,
+                    categorie: "standard",
+                    prix: nouvelEvenement.prix_a_partir_de || 0,
+                    places_totales: 100
+                }]);
+
+            if (zoneError) {
+                console.error("Erreur creation zone :", zoneError);
+            }
+
             eventFormOverlay.classList.remove("active");
             chargerEvenements();
         });
+
+        /* ---------- ESPACES (TABLES & SALONS) ---------- */
+
+        async function chargerEspacesDashboard() {
+            const listEl = document.getElementById("espaceList");
+            listEl.innerHTML = '<p style="color:#999;">Chargement des espaces...</p>';
+
+            const { data, error } = await supabaseClient
+                .from("tables_salons")
+                .select("*")
+                .order("identifiant", { ascending: true });
+
+            if (error) {
+                listEl.innerHTML = '<p style="color:#e63946;">Erreur lors du chargement des espaces.</p>';
+                console.error(error);
+                return;
+            }
+
+            if (!data || data.length === 0) {
+                listEl.innerHTML = '<div class="placeholder">Aucun espace pour le moment. Clique sur "+ Nouvel espace" pour en créer un.</div>';
+                return;
+            }
+
+            listEl.innerHTML = "";
+
+            data.forEach(function (espace) {
+                const row = document.createElement("div");
+                row.className = "espace-row";
+
+                row.innerHTML = `
+                    <div class="infos">
+                        <strong>${espace.identifiant}</strong>
+                        <span>${espace.type === "table" ? "Table" : "Salon"} — jusqu'à ${espace.capacite} personnes</span>
+                    </div>
+                    <div class="espace-controles">
+                        <div>
+                            <label>Prix (FCFA)</label><br>
+                            <input type="number" min="0" class="input-prix" value="${espace.prix}">
+                        </div>
+                        <div>
+                            <label>Statut</label><br>
+                            <select class="input-statut">
+                                <option value="true" ${espace.actif ? "selected" : ""}>Actif</option>
+                                <option value="false" ${!espace.actif ? "selected" : ""}>Désactivé</option>
+                            </select>
+                        </div>
+                        <button class="btn-mini" type="button">Enregistrer</button>
+                    </div>
+                `;
+
+                const btn = row.querySelector(".btn-mini");
+                const inputPrix = row.querySelector(".input-prix");
+                const inputStatut = row.querySelector(".input-statut");
+
+                btn.addEventListener("click", async function () {
+                    btn.textContent = "Enregistrement...";
+
+                    const { error: updateError } = await supabaseClient
+                        .from("tables_salons")
+                        .update({
+                            prix: parseFloat(inputPrix.value),
+                            actif: inputStatut.value === "true"
+                        })
+                        .eq("id", espace.id);
+
+                    if (updateError) {
+                        btn.textContent = "Erreur";
+                        console.error(updateError);
+                        setTimeout(function () { btn.textContent = "Enregistrer"; }, 1500);
+                        return;
+                    }
+
+                    btn.textContent = "✓ Enregistré";
+                    btn.classList.add("saved");
+                    setTimeout(function () {
+                        btn.textContent = "Enregistrer";
+                        btn.classList.remove("saved");
+                    }, 1500);
+                });
+
+                listEl.appendChild(row);
+            });
+        }
+
+        const espaceFormOverlay = document.getElementById("espaceFormOverlay");
+        const espaceForm = document.getElementById("espaceForm");
+        const espaceFormMessage = document.getElementById("espaceFormMessage");
+
+        document.getElementById("btnNouvelEspace").addEventListener("click", function () {
+            espaceForm.reset();
+            espaceFormMessage.textContent = "";
+            espaceFormOverlay.classList.add("active");
+        });
+
+        document.getElementById("btnAnnulerEspace").addEventListener("click", function () {
+            espaceFormOverlay.classList.remove("active");
+        });
+
+        espaceForm.addEventListener("submit", async function (e) {
+            e.preventDefault();
+            espaceFormMessage.textContent = "";
+
+            const nouvelEspace = {
+                identifiant: document.getElementById("espIdentifiant").value.trim(),
+                type: document.getElementById("espType").value,
+                capacite: parseInt(document.getElementById("espCapacite").value, 10),
+                prix: parseFloat(document.getElementById("espPrix").value),
+                actif: true
+            };
+
+            const { error } = await supabaseClient
+                .from("tables_salons")
+                .insert([nouvelEspace]);
+
+            if (error) {
+                espaceFormMessage.textContent = error.code === "23505"
+                    ? "Cet identifiant existe déjà."
+                    : "Erreur : impossible de créer cet espace.";
+                console.error(error);
+                return;
+            }
+
+            espaceFormOverlay.classList.remove("active");
+            chargerEspacesDashboard();
+        });
+
+        /* ---------- SCANNER D'ENTREE ---------- */
+
+        let html5QrCode = null;
+        let scannerActif = false;
+
+        function afficherResultatScanner(type, titre, lignes) {
+            const el = document.getElementById("scannerResult");
+            el.className = "scanner-result show " + type;
+            el.innerHTML = "<h4>" + titre + "</h4>" + lignes.map(function (l) {
+                return "<p>" + l + "</p>";
+            }).join("");
+        }
+
+        async function verifierBillet(code) {
+            if (!code) return;
+
+            const { data: billet, error } = await supabaseClient
+                .from("billets")
+                .select("*, evenements(nom), clients(nom)")
+                .eq("qr_code_secret", code)
+                .maybeSingle();
+
+            if (error || !billet) {
+                afficherResultatScanner("invalide", "❌ Billet invalide", ["Ce code ne correspond à aucun billet."]);
+                return;
+            }
+
+            if (billet.statut_paiement !== "paye") {
+                afficherResultatScanner("invalide", "❌ Billet non payé", ["Ce billet n'est pas marqué comme payé."]);
+                return;
+            }
+
+            if (billet.utilise) {
+                afficherResultatScanner("deja-utilise", "⚠️ Billet déjà utilisé", [
+                    "Événement : " + (billet.evenements ? billet.evenements.nom : "—"),
+                    "Client : " + (billet.clients ? billet.clients.nom : "—"),
+                    "Déjà contrôlé le : " + new Date(billet.utilise_le).toLocaleString("fr-FR")
+                ]);
+                return;
+            }
+
+            const { error: updateError } = await supabaseClient
+                .from("billets")
+                .update({
+                    utilise: true,
+                    utilise_le: new Date().toISOString(),
+                    controle_par: currentProfilId
+                })
+                .eq("id", billet.id);
+
+            if (updateError) {
+                afficherResultatScanner("invalide", "❌ Erreur", ["Impossible de valider ce billet, réessaie."]);
+                console.error(updateError);
+                return;
+            }
+
+            afficherResultatScanner("valide", "✅ Accès autorisé", [
+                "Événement : " + (billet.evenements ? billet.evenements.nom : "—"),
+                "Client : " + (billet.clients ? billet.clients.nom : "—"),
+                "Référence : " + billet.reference
+            ]);
+        }
+
+        document.getElementById("btnVerifierManuel").addEventListener("click", function () {
+            const code = document.getElementById("manualCode").value.trim();
+            verifierBillet(code);
+            document.getElementById("manualCode").value = "";
+        });
+
+        document.getElementById("manualCode").addEventListener("keydown", function (e) {
+            if (e.key === "Enter") {
+                document.getElementById("btnVerifierManuel").click();
+            }
+        });
+
+        function demarrerScanner() {
+            if (scannerActif || typeof Html5Qrcode === "undefined") return;
+
+            try {
+                html5QrCode = new Html5Qrcode("qr-reader");
+                scannerActif = true;
+
+                html5QrCode.start(
+                    { facingMode: "environment" },
+                    { fps: 10, qrbox: 250 },
+                    function (decodedText) {
+                        verifierBillet(decodedText);
+                    },
+                    function () { /* erreur de lecture ignoree, on continue de scanner */ }
+                ).catch(function (err) {
+                    console.error("Impossible de démarrer la caméra :", err);
+                    scannerActif = false;
+                });
+            } catch (err) {
+                console.error("Erreur d'initialisation du scanner :", err);
+                scannerActif = false;
+            }
+        }
+
+        function arreterScanner() {
+            if (html5QrCode && scannerActif) {
+                html5QrCode.stop().then(function () {
+                    html5QrCode.clear();
+                    scannerActif = false;
+                }).catch(function () {
+                    scannerActif = false;
+                });
+            }
+        }
 
         initDashboard();
 

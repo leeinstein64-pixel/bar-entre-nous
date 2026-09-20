@@ -779,6 +779,7 @@
             <a href="#evenements">Événements</a>
             <a href="#reservations">Réservations</a>
             <a href="#infos">Infos</a>
+            <a href="login.html" style="color:#e63946;">Espace employé</a>
         </nav>
 
         <button class="menu-btn" onclick="toggleMenu()">
@@ -1247,11 +1248,17 @@
                         <p>${formatDateLongueFr(evt.date_evenement)}</p>
                         <p>À partir de ${evt.heure_evenement.slice(0,5)}</p>
                         <p class="event-price">${prixTexte}</p>
-                        <button class="event-button" ${estTermine ? "disabled" : "onclick=\"location.hash='#reservations'\""}>
-                            ${estTermine ? infosStatut.texte : "Réserver"}
+                        <button class="event-button" ${estTermine ? "disabled" : ""}>
+                            ${estTermine ? infosStatut.texte : "Acheter un billet"}
                         </button>
                     </div>
                 `;
+
+                if (!estTermine) {
+                    card.querySelector(".event-button").addEventListener("click", function () {
+                        window.location.href = "billet.html?evenement=" + evt.id;
+                    });
+                }
 
                 grid.appendChild(card);
             });

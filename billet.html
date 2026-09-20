@@ -1,0 +1,444 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Acheter un billet | Entre Nous Bar</title>
+
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: Arial, sans-serif;
+            background: #080808;
+            color: white;
+            min-height: 100vh;
+            padding: 40px 20px;
+        }
+
+        .page {
+            max-width: 480px;
+            margin: 0 auto;
+        }
+
+        .back-link {
+            display: inline-block;
+            color: #999;
+            text-decoration: none;
+            font-size: 14px;
+            margin-bottom: 25px;
+        }
+
+        .back-link:hover {
+            color: white;
+        }
+
+        .brand {
+            font-size: 22px;
+            font-weight: 800;
+            letter-spacing: 1px;
+            margin-bottom: 30px;
+        }
+
+        .event-summary {
+            background: #141414;
+            border: 1px solid #292929;
+            border-radius: 15px;
+            overflow: hidden;
+            margin-bottom: 25px;
+        }
+
+        .event-summary img {
+            width: 100%;
+            height: 180px;
+            object-fit: cover;
+            display: block;
+        }
+
+        .event-summary-content {
+            padding: 20px;
+        }
+
+        .event-summary-content h2 {
+            font-size: 20px;
+            margin-bottom: 8px;
+        }
+
+        .event-summary-content p {
+            color: #999;
+            font-size: 14px;
+            margin-bottom: 4px;
+        }
+
+        .event-summary-content .prix {
+            color: #e63946;
+            font-weight: bold;
+            font-size: 16px;
+            margin-top: 10px;
+        }
+
+        .card {
+            background: #141414;
+            border: 1px solid #292929;
+            border-radius: 15px;
+            padding: 25px;
+        }
+
+        .card h3 {
+            margin-bottom: 18px;
+            font-size: 17px;
+        }
+
+        .form-group {
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+            margin-bottom: 16px;
+        }
+
+        .form-group label {
+            font-size: 13px;
+            color: #ccc;
+        }
+
+        .form-group input {
+            background: #0b0b0b;
+            border: 1px solid #292929;
+            border-radius: 8px;
+            padding: 12px 14px;
+            color: white;
+            font-size: 14px;
+        }
+
+        .form-group input:focus {
+            outline: none;
+            border-color: #e63946;
+        }
+
+        .btn-primary {
+            width: 100%;
+            padding: 14px;
+            border: none;
+            border-radius: 8px;
+            background: #e63946;
+            color: white;
+            font-size: 15px;
+            font-weight: bold;
+            cursor: pointer;
+        }
+
+        .btn-primary:hover {
+            background: #ff4d5a;
+        }
+
+        .btn-primary:disabled {
+            background: #444;
+            cursor: not-allowed;
+        }
+
+        .message {
+            font-size: 14px;
+            margin-bottom: 14px;
+            text-align: center;
+        }
+
+        .message.error {
+            color: #e63946;
+        }
+
+        .hidden {
+            display: none !important;
+        }
+
+        /* Ecran de confirmation apres creation du billet */
+
+        .confirmation .badge {
+            display: inline-block;
+            background: #4ade80;
+            color: #08240f;
+            font-weight: bold;
+            font-size: 13px;
+            padding: 6px 14px;
+            border-radius: 20px;
+            margin-bottom: 18px;
+        }
+
+        .confirmation .reference {
+            font-size: 24px;
+            font-weight: 800;
+            margin-bottom: 20px;
+            letter-spacing: 1px;
+        }
+
+        .confirmation .recap-row {
+            display: flex;
+            justify-content: space-between;
+            padding: 8px 0;
+            border-bottom: 1px solid #222;
+            font-size: 14px;
+            color: #ccc;
+        }
+
+        .confirmation .note {
+            margin-top: 18px;
+            font-size: 13px;
+            color: #999;
+        }
+
+        .payment-buttons {
+            display: flex;
+            gap: 10px;
+            margin-top: 20px;
+        }
+
+        .payment-btn {
+            flex: 1;
+            padding: 14px;
+            border-radius: 8px;
+            border: 1px solid #292929;
+            background: #0b0b0b;
+            color: white;
+            font-weight: bold;
+            cursor: pointer;
+            font-size: 14px;
+        }
+
+        .payment-btn:hover {
+            border-color: #e63946;
+        }
+    </style>
+</head>
+
+<body>
+
+    <div class="page">
+
+        <a href="index.html#evenements" class="back-link">&larr; Retour au site</a>
+
+        <div class="brand">ENTRE NOUS BAR</div>
+
+        <div id="loadingState">
+            <p style="color:#999;">Chargement de l'événement...</p>
+        </div>
+
+        <div id="notFoundState" class="hidden">
+            <p style="color:#e63946;">Cet événement est introuvable ou n'est plus disponible.</p>
+        </div>
+
+        <div id="mainContent" class="hidden">
+
+            <div class="event-summary">
+                <img id="evtImage" class="hidden" src="" alt="">
+                <div class="event-summary-content">
+                    <h2 id="evtNom"></h2>
+                    <p id="evtDate"></p>
+                    <p id="evtHeure"></p>
+                    <p class="prix" id="evtPrix"></p>
+                </div>
+            </div>
+
+            <!-- FORMULAIRE -->
+            <div class="card" id="formCard">
+                <h3>Tes informations</h3>
+
+                <form id="billetForm">
+
+                    <div class="form-group">
+                        <label for="nom">Nom complet</label>
+                        <input type="text" id="nom" required>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="telephone">Numéro de téléphone</label>
+                        <input type="tel" id="telephone" required>
+                    </div>
+
+                    <p class="message error" id="formMessage"></p>
+
+                    <button type="submit" class="btn-primary" id="submitBtn">
+                        Continuer vers le paiement
+                    </button>
+
+                </form>
+            </div>
+
+            <!-- CONFIRMATION / PAIEMENT -->
+            <div class="card confirmation hidden" id="confirmationCard">
+
+                <span class="badge">Billet créé — en attente de paiement</span>
+
+                <div class="reference" id="confReference"></div>
+
+                <div class="recap-row">
+                    <span>Nom</span>
+                    <strong id="confNom"></strong>
+                </div>
+                <div class="recap-row">
+                    <span>Téléphone</span>
+                    <strong id="confTelephone"></strong>
+                </div>
+                <div class="recap-row">
+                    <span>Montant</span>
+                    <strong id="confMontant"></strong>
+                </div>
+
+                <div class="payment-buttons">
+                    <!--
+                        TODO backend : brancher ici les vrais appels API
+                        Airtel Money et Moov Money. Chaque bouton doit :
+                        1. Envoyer une demande de paiement au numero du client
+                        2. Attendre la confirmation de l'operateur (webhook)
+                        3. Mettre a jour billets.statut_paiement = 'paye'
+                    -->
+                    <button class="payment-btn" onclick="alert('Paiement Airtel Money : bientôt disponible.')">
+                        📱 Airtel Money
+                    </button>
+                    <button class="payment-btn" onclick="alert('Paiement Moov Money : bientôt disponible.')">
+                        📱 Moov Money
+                    </button>
+                </div>
+
+                <p class="note">
+                    Garde bien ta référence ci-dessus. Une fois le paiement Airtel Money / Moov Money confirmé,
+                    ton billet sera activé et ton QR code d'entrée généré.
+                </p>
+
+            </div>
+
+        </div>
+
+    </div>
+
+    <script>
+
+        // ---------- CONFIGURATION SUPABASE ----------
+        const SUPABASE_URL = "https://kimrreeelrkkmofrrccw.supabase.co";
+        const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImtpbXJyZWVlbHJra21vZnJyY2N3Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODk4NjQ4MDksImV4cCI6MjEwNTQ0MDgwOX0.PTEckXwaBWCOgS75Xo7X4G7taGgPsvDursSg9gcqCWE";
+
+        const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+        function formatFCFA(montant) {
+            return Number(montant).toLocaleString("fr-FR") + " FCFA";
+        }
+
+        const JOURS_FR = ["Dimanche", "Lundi", "Mardi", "Mercredi", "Jeudi", "Vendredi", "Samedi"];
+        const MOIS_FR = ["janvier", "février", "mars", "avril", "mai", "juin", "juillet", "août", "septembre", "octobre", "novembre", "décembre"];
+
+        function formatDateLongueFr(valeurISO) {
+            const d = new Date(valeurISO + "T00:00:00");
+            return `${JOURS_FR[d.getDay()]} ${d.getDate()} ${MOIS_FR[d.getMonth()]} ${d.getFullYear()}`;
+        }
+
+        const params = new URLSearchParams(window.location.search);
+        const evenementId = params.get("evenement");
+
+        let zoneActuelle = null;
+
+        async function chargerEvenement() {
+            if (!evenementId) {
+                document.getElementById("loadingState").classList.add("hidden");
+                document.getElementById("notFoundState").classList.remove("hidden");
+                return;
+            }
+
+            const { data: evt, error: evtError } = await supabaseClient
+                .from("evenements")
+                .select("*")
+                .eq("id", evenementId)
+                .maybeSingle();
+
+            if (evtError || !evt) {
+                document.getElementById("loadingState").classList.add("hidden");
+                document.getElementById("notFoundState").classList.remove("hidden");
+                return;
+            }
+
+            const { data: zone } = await supabaseClient
+                .from("evenement_zones")
+                .select("*")
+                .eq("evenement_id", evenementId)
+                .limit(1)
+                .maybeSingle();
+
+            if (!zone) {
+                document.getElementById("loadingState").classList.add("hidden");
+                document.getElementById("notFoundState").classList.remove("hidden");
+                document.getElementById("notFoundState").innerHTML =
+                    '<p style="color:#e63946;">La billetterie n\'est pas encore configurée pour cet événement. Contacte-nous directement.</p>';
+                return;
+            }
+
+            zoneActuelle = zone;
+
+            if (evt.affiche_url) {
+                const img = document.getElementById("evtImage");
+                img.src = evt.affiche_url;
+                img.classList.remove("hidden");
+            }
+
+            document.getElementById("evtNom").textContent = evt.nom;
+            document.getElementById("evtDate").textContent = formatDateLongueFr(evt.date_evenement);
+            document.getElementById("evtHeure").textContent = "À partir de " + evt.heure_evenement.slice(0, 5);
+            document.getElementById("evtPrix").textContent = formatFCFA(zone.prix);
+
+            document.getElementById("loadingState").classList.add("hidden");
+            document.getElementById("mainContent").classList.remove("hidden");
+        }
+
+        document.getElementById("billetForm").addEventListener("submit", async function (e) {
+            e.preventDefault();
+
+            const formMessage = document.getElementById("formMessage");
+            const submitBtn = document.getElementById("submitBtn");
+            formMessage.textContent = "";
+
+            const nom = document.getElementById("nom").value.trim();
+            const telephone = document.getElementById("telephone").value.trim();
+
+            submitBtn.disabled = true;
+            submitBtn.textContent = "Création du billet...";
+
+            const { data: reference, error } = await supabaseClient
+                .rpc("creer_billet", {
+                    p_nom: nom,
+                    p_telephone: telephone,
+                    p_evenement_id: parseInt(evenementId, 10),
+                    p_evenement_zone_id: zoneActuelle.id,
+                    p_prix: zoneActuelle.prix
+                });
+
+            submitBtn.disabled = false;
+            submitBtn.textContent = "Continuer vers le paiement";
+
+            if (error) {
+                if (error.message && error.message.includes("COMPLET")) {
+                    formMessage.textContent = "Complet : il n'y a plus de billets disponibles pour cet événement.";
+                } else {
+                    formMessage.textContent = "Une erreur est survenue, merci de réessayer.";
+                    console.error(error);
+                }
+                return;
+            }
+
+            document.getElementById("formCard").classList.add("hidden");
+
+            document.getElementById("confReference").textContent = reference;
+            document.getElementById("confNom").textContent = nom;
+            document.getElementById("confTelephone").textContent = telephone;
+            document.getElementById("confMontant").textContent = formatFCFA(zoneActuelle.prix);
+
+            document.getElementById("confirmationCard").classList.remove("hidden");
+        });
+
+        chargerEvenement();
+
+    </script>
+
+</body>
+</html>
