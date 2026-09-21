@@ -519,6 +519,13 @@
                 <div id="section-evenements" class="section hidden">
                     <h2>Événements</h2>
 
+                    <div class="placeholder" style="margin-bottom:20px; display:flex; align-items:center; gap:15px; flex-wrap:wrap;">
+                        <strong style="color:white;">Salle d'attente — capacité simultanée :</strong>
+                        <input type="number" id="capaciteFileAttente" min="1" style="width:120px; background:#0b0b0b; border:1px solid #292929; border-radius:8px; padding:8px 10px; color:white;">
+                        <button class="btn-mini" id="btnSauverCapacite">Enregistrer</button>
+                        <span style="color:#999; font-size:13px;">Augmente ce chiffre au fur et à mesure que tu montes en gamme d'hébergement.</span>
+                    </div>
+
                     <div class="section-toolbar">
                         <button class="btn-primary" id="btnNouvelEvenement">
                             + Nouvel événement
@@ -532,8 +539,28 @@
 
                 <div id="section-reservations" class="section hidden">
                     <h2>Réservations</h2>
-                    <div class="placeholder">
-                        La liste des réservations du jour, filtrable par date/table/salon, arrive ici.
+
+                    <div class="section-toolbar" style="justify-content:flex-start; gap:15px; flex-wrap:wrap;">
+                        <div>
+                            <label style="font-size:13px; color:#999;">Date</label><br>
+                            <input type="date" id="filtreDateReservations" style="background:#0b0b0b; border:1px solid #292929; border-radius:8px; padding:8px 10px; color:white;">
+                        </div>
+                        <div>
+                            <label style="font-size:13px; color:#999;">Statut</label><br>
+                            <select id="filtreStatutReservations" style="background:#0b0b0b; border:1px solid #292929; border-radius:8px; padding:8px 10px; color:white;">
+                                <option value="">Tous</option>
+                                <option value="en_attente">En attente</option>
+                                <option value="confirmee">Confirmée</option>
+                                <option value="annulee">Annulée</option>
+                                <option value="no_show">Non présentée</option>
+                                <option value="terminee">Terminée</option>
+                            </select>
+                        </div>
+                        <button class="btn-mini" id="btnFiltrerReservations" style="align-self:flex-end;">Filtrer</button>
+                    </div>
+
+                    <div class="event-list" id="reservationList" style="margin-top:20px;">
+                        <p style="color:#999;">Chargement des réservations...</p>
                     </div>
                 </div>
 
@@ -553,8 +580,19 @@
 
                 <div id="section-billets" class="section hidden">
                     <h2>Billets</h2>
-                    <div class="placeholder">
-                        La gestion des billets vendus par événement arrive ici.
+
+                    <div class="section-toolbar" style="justify-content:flex-start; gap:15px; flex-wrap:wrap;">
+                        <div>
+                            <label style="font-size:13px; color:#999;">Événement</label><br>
+                            <select id="filtreEvenementBillets" style="background:#0b0b0b; border:1px solid #292929; border-radius:8px; padding:8px 10px; color:white; min-width:220px;">
+                                <option value="">Tous les événements</option>
+                            </select>
+                        </div>
+                        <button class="btn-mini" id="btnFiltrerBillets" style="align-self:flex-end;">Filtrer</button>
+                    </div>
+
+                    <div class="event-list" id="billetList" style="margin-top:20px;">
+                        <p style="color:#999;">Chargement des billets...</p>
                     </div>
                 </div>
 
@@ -567,8 +605,15 @@
 
                 <div id="section-comptes" class="section hidden">
                     <h2>Comptes employés</h2>
-                    <div class="placeholder">
-                        La création/désactivation des comptes employés arrive ici.
+
+                    <div class="section-toolbar">
+                        <button class="btn-primary" id="btnNouveauCompte">
+                            + Nouveau compte
+                        </button>
+                    </div>
+
+                    <div class="event-list" id="compteList">
+                        <p style="color:#999;">Chargement des comptes...</p>
                     </div>
                 </div>
 
@@ -648,6 +693,13 @@
                     </select>
                 </div>
 
+                <div class="form-group">
+                    <label style="display:flex; align-items:center; gap:8px; cursor:pointer;">
+                        <input type="checkbox" id="evtFileAttente">
+                        Activer la salle d'attente (pour un événement à forte affluence)
+                    </label>
+                </div>
+
                 <p class="message" id="eventFormMessage" style="color:#e63946; margin-bottom:10px;"></p>
 
                 <div class="form-actions">
@@ -694,6 +746,55 @@
                 <div class="form-actions">
                     <button type="button" class="btn-secondary" id="btnAnnulerEspace">Annuler</button>
                     <button type="submit" class="btn-primary">Créer l'espace</button>
+                </div>
+
+            </form>
+        </div>
+    </div>
+
+    <!-- FORMULAIRE NOUVEAU COMPTE EMPLOYE -->
+    <div class="event-form-overlay" id="compteFormOverlay">
+        <div class="event-form-box">
+            <h3>Nouveau compte employé</h3>
+
+            <form id="compteForm">
+
+                <div class="form-group">
+                    <label for="cptNom">Nom complet</label>
+                    <input type="text" id="cptNom" required>
+                </div>
+
+                <div class="form-group">
+                    <label for="cptTelephone">Téléphone</label>
+                    <input type="text" id="cptTelephone">
+                </div>
+
+                <div class="form-group">
+                    <label for="cptEmail">Email (pour se connecter)</label>
+                    <input type="email" id="cptEmail" required>
+                </div>
+
+                <div class="form-group">
+                    <label for="cptMotDePasse">Mot de passe temporaire</label>
+                    <input type="text" id="cptMotDePasse" required minlength="6">
+                </div>
+
+                <div class="form-group">
+                    <label for="cptRole">Rôle</label>
+                    <select id="cptRole">
+                        <option value="pdg">PDG</option>
+                        <option value="administrateur">Administrateur</option>
+                        <option value="manager">Manager</option>
+                        <option value="caissiere">Caissière</option>
+                        <option value="controleur">Contrôleur</option>
+                    </select>
+                </div>
+
+                <p class="message" id="compteFormMessage" style="color:#e63946; margin-bottom:10px;"></p>
+
+                <div class="form-actions">
+                    <button type="button" class="btn-secondary" id="btnAnnulerCompte">Annuler</button>
+                    <button type="submit" class="btn-primary">Créer le compte</button>
                 </div>
 
             </form>
@@ -753,10 +854,24 @@
 
             if (cle === "evenements") {
                 chargerEvenements();
+                chargerCapaciteFileAttente();
             }
 
             if (cle === "espaces") {
                 chargerEspacesDashboard();
+            }
+
+            if (cle === "reservations") {
+                chargerReservations();
+            }
+
+            if (cle === "billets") {
+                chargerListeEvenementsFiltre();
+                chargerBillets();
+            }
+
+            if (cle === "comptes") {
+                chargerComptes();
             }
 
             if (cle === "scanner") {
@@ -827,6 +942,40 @@
         document.getElementById("logoutBtn").addEventListener("click", async function () {
             await supabaseClient.auth.signOut();
             window.location.href = "login.html";
+        });
+
+        /* ---------- SALLE D'ATTENTE : REGLAGE DE CAPACITE ---------- */
+
+        async function chargerCapaciteFileAttente() {
+            const { data } = await supabaseClient
+                .from("parametres_file_attente")
+                .select("capacite_simultanee")
+                .eq("id", 1)
+                .maybeSingle();
+
+            if (data) {
+                document.getElementById("capaciteFileAttente").value = data.capacite_simultanee;
+            }
+        }
+
+        document.getElementById("btnSauverCapacite").addEventListener("click", async function () {
+            const btn = document.getElementById("btnSauverCapacite");
+            const valeur = parseInt(document.getElementById("capaciteFileAttente").value, 10);
+
+            if (!valeur || valeur < 1) {
+                alert("Merci d'indiquer un nombre valide.");
+                return;
+            }
+
+            btn.textContent = "Enregistrement...";
+
+            const { error } = await supabaseClient
+                .from("parametres_file_attente")
+                .update({ capacite_simultanee: valeur })
+                .eq("id", 1);
+
+            btn.textContent = error ? "Erreur" : "✓ Enregistré";
+            setTimeout(function () { btn.textContent = "Enregistrer"; }, 1500);
         });
 
         /* ---------- EVENEMENTS ---------- */
@@ -944,7 +1093,8 @@
                 lieu: document.getElementById("evtLieu").value.trim() || null,
                 prix_a_partir_de: document.getElementById("evtPrix").value || null,
                 statut: document.getElementById("evtStatut").value,
-                affiche_url: afficheUrl
+                affiche_url: afficheUrl,
+                file_attente_active: document.getElementById("evtFileAttente").checked
             };
 
             const { data: evenementCree, error } = await supabaseClient
@@ -1103,6 +1253,312 @@
 
             espaceFormOverlay.classList.remove("active");
             chargerEspacesDashboard();
+        });
+
+        /* ---------- RESERVATIONS ---------- */
+
+        const LABELS_STATUT_RESA = {
+            en_attente: "En attente",
+            confirmee: "Confirmée",
+            annulee: "Annulée",
+            no_show: "Non présentée",
+            terminee: "Terminée"
+        };
+
+        document.getElementById("filtreDateReservations").valueAsDate = new Date();
+
+        async function chargerReservations() {
+            const listEl = document.getElementById("reservationList");
+            listEl.innerHTML = '<p style="color:#999;">Chargement des réservations...</p>';
+
+            const dateFiltre = document.getElementById("filtreDateReservations").value;
+            const statutFiltre = document.getElementById("filtreStatutReservations").value;
+
+            let requete = supabaseClient
+                .from("reservations")
+                .select("*, clients(nom, telephone), tables_salons(identifiant, type)")
+                .order("heure_reservation", { ascending: true });
+
+            if (dateFiltre) requete = requete.eq("date_reservation", dateFiltre);
+            if (statutFiltre) requete = requete.eq("statut", statutFiltre);
+
+            const { data, error } = await requete;
+
+            if (error) {
+                listEl.innerHTML = '<p style="color:#e63946;">Erreur lors du chargement.</p>';
+                console.error(error);
+                return;
+            }
+
+            if (!data || data.length === 0) {
+                listEl.innerHTML = '<div class="placeholder">Aucune réservation pour ces filtres.</div>';
+                return;
+            }
+
+            listEl.innerHTML = "";
+
+            data.forEach(function (resa) {
+                const row = document.createElement("div");
+                row.className = "event-row";
+
+                const client = resa.clients || {};
+                const espace = resa.tables_salons || {};
+
+                row.innerHTML = `
+                    <div class="infos">
+                        <strong>${espace.identifiant || "—"} — ${client.nom || "—"}</strong>
+                        <span>${resa.heure_reservation ? resa.heure_reservation.slice(0,5) : ""} · ${client.telephone || ""} · ${resa.nombre_personnes} pers. · ${Number(resa.montant).toLocaleString("fr-FR")} FCFA</span>
+                    </div>
+                    <div class="espace-controles">
+                        <select class="input-statut-resa">
+                            <option value="en_attente" ${resa.statut === "en_attente" ? "selected" : ""}>En attente</option>
+                            <option value="confirmee" ${resa.statut === "confirmee" ? "selected" : ""}>Confirmée</option>
+                            <option value="annulee" ${resa.statut === "annulee" ? "selected" : ""}>Annulée</option>
+                            <option value="no_show" ${resa.statut === "no_show" ? "selected" : ""}>Non présentée</option>
+                            <option value="terminee" ${resa.statut === "terminee" ? "selected" : ""}>Terminée</option>
+                        </select>
+                        <button class="btn-mini">Enregistrer</button>
+                    </div>
+                `;
+
+                const btn = row.querySelector(".btn-mini");
+                const select = row.querySelector(".input-statut-resa");
+
+                btn.addEventListener("click", async function () {
+                    btn.textContent = "...";
+                    const { error: updateError } = await supabaseClient
+                        .from("reservations")
+                        .update({ statut: select.value })
+                        .eq("id", resa.id);
+
+                    btn.textContent = updateError ? "Erreur" : "✓";
+                    if (!updateError) btn.classList.add("saved");
+                    setTimeout(function () {
+                        btn.textContent = "Enregistrer";
+                        btn.classList.remove("saved");
+                    }, 1200);
+                });
+
+                listEl.appendChild(row);
+            });
+        }
+
+        document.getElementById("btnFiltrerReservations").addEventListener("click", chargerReservations);
+
+        /* ---------- BILLETS ---------- */
+
+        async function chargerListeEvenementsFiltre() {
+            const select = document.getElementById("filtreEvenementBillets");
+            if (select.dataset.charge) return;
+
+            const { data } = await supabaseClient.from("evenements").select("id, nom").order("date_evenement", { ascending: false });
+
+            (data || []).forEach(function (evt) {
+                const option = document.createElement("option");
+                option.value = evt.id;
+                option.textContent = evt.nom;
+                select.appendChild(option);
+            });
+
+            select.dataset.charge = "1";
+        }
+
+        async function chargerBillets() {
+            const listEl = document.getElementById("billetList");
+            listEl.innerHTML = '<p style="color:#999;">Chargement des billets...</p>';
+
+            const evenementFiltre = document.getElementById("filtreEvenementBillets").value;
+
+            let requete = supabaseClient
+                .from("billets")
+                .select("*, clients(nom, telephone), evenements(nom)")
+                .order("achete_le", { ascending: false });
+
+            if (evenementFiltre) requete = requete.eq("evenement_id", evenementFiltre);
+
+            const { data, error } = await requete;
+
+            if (error) {
+                listEl.innerHTML = '<p style="color:#e63946;">Erreur lors du chargement.</p>';
+                console.error(error);
+                return;
+            }
+
+            if (!data || data.length === 0) {
+                listEl.innerHTML = '<div class="placeholder">Aucun billet pour le moment.</div>';
+                return;
+            }
+
+            listEl.innerHTML = "";
+
+            data.forEach(function (billet) {
+                const row = document.createElement("div");
+                row.className = "event-row";
+
+                const client = billet.clients || {};
+                const evt = billet.evenements || {};
+                const statutTexte = billet.statut_paiement === "paye" ? "Payé" :
+                    billet.statut_paiement === "en_attente" ? "En attente" :
+                    billet.statut_paiement === "echoue" ? "Échoué" : "Annulé";
+                const statutCouleur = billet.statut_paiement === "paye" ? "#4ade80" : "#e63946";
+
+                row.innerHTML = `
+                    <div class="infos">
+                        <strong>${billet.reference} — ${evt.nom || "—"}</strong>
+                        <span>${client.nom || "—"} · ${client.telephone || ""} · ${Number(billet.prix).toLocaleString("fr-FR")} FCFA · ${billet.utilise ? "Utilisé" : "Non utilisé"}</span>
+                    </div>
+                    <div class="espace-controles">
+                        <span class="statut-badge" style="background:${statutCouleur}; color:#08240f;">${statutTexte}</span>
+                        ${billet.statut_paiement !== "paye" ? '<button class="btn-mini">Marquer payé</button>' : ""}
+                    </div>
+                `;
+
+                const btn = row.querySelector(".btn-mini");
+                if (btn) {
+                    btn.addEventListener("click", async function () {
+                        btn.textContent = "...";
+                        const { error: updateError } = await supabaseClient
+                            .from("billets")
+                            .update({ statut_paiement: "paye" })
+                            .eq("id", billet.id);
+
+                        if (!updateError) {
+                            chargerBillets();
+                        } else {
+                            btn.textContent = "Erreur";
+                        }
+                    });
+                }
+
+                listEl.appendChild(row);
+            });
+        }
+
+        document.getElementById("btnFiltrerBillets").addEventListener("click", chargerBillets);
+
+        /* ---------- COMPTES EMPLOYES ---------- */
+
+        async function chargerComptes() {
+            const listEl = document.getElementById("compteList");
+            listEl.innerHTML = '<p style="color:#999;">Chargement des comptes...</p>';
+
+            const { data, error } = await supabaseClient
+                .from("profils")
+                .select("*")
+                .order("cree_le", { ascending: true });
+
+            if (error) {
+                listEl.innerHTML = '<p style="color:#e63946;">Erreur lors du chargement.</p>';
+                console.error(error);
+                return;
+            }
+
+            listEl.innerHTML = "";
+
+            data.forEach(function (profil) {
+                const row = document.createElement("div");
+                row.className = "event-row";
+
+                row.innerHTML = `
+                    <div class="infos">
+                        <strong>${profil.nom}</strong>
+                        <span>${profil.telephone || ""}</span>
+                    </div>
+                    <div class="espace-controles">
+                        <select class="input-role">
+                            <option value="pdg" ${profil.role === "pdg" ? "selected" : ""}>PDG</option>
+                            <option value="administrateur" ${profil.role === "administrateur" ? "selected" : ""}>Administrateur</option>
+                            <option value="manager" ${profil.role === "manager" ? "selected" : ""}>Manager</option>
+                            <option value="caissiere" ${profil.role === "caissiere" ? "selected" : ""}>Caissière</option>
+                            <option value="controleur" ${profil.role === "controleur" ? "selected" : ""}>Contrôleur</option>
+                        </select>
+                        <select class="input-actif-compte">
+                            <option value="true" ${profil.actif ? "selected" : ""}>Actif</option>
+                            <option value="false" ${!profil.actif ? "selected" : ""}>Désactivé</option>
+                        </select>
+                        <button class="btn-mini">Enregistrer</button>
+                    </div>
+                `;
+
+                const btn = row.querySelector(".btn-mini");
+                const roleSelect = row.querySelector(".input-role");
+                const actifSelect = row.querySelector(".input-actif-compte");
+
+                btn.addEventListener("click", async function () {
+                    btn.textContent = "...";
+                    const { error: updateError } = await supabaseClient
+                        .from("profils")
+                        .update({
+                            role: roleSelect.value,
+                            actif: actifSelect.value === "true"
+                        })
+                        .eq("id", profil.id);
+
+                    btn.textContent = updateError ? "Erreur" : "✓";
+                    if (!updateError) btn.classList.add("saved");
+                    setTimeout(function () {
+                        btn.textContent = "Enregistrer";
+                        btn.classList.remove("saved");
+                    }, 1200);
+                });
+
+                listEl.appendChild(row);
+            });
+        }
+
+        const compteFormOverlay = document.getElementById("compteFormOverlay");
+        const compteForm = document.getElementById("compteForm");
+        const compteFormMessage = document.getElementById("compteFormMessage");
+
+        document.getElementById("btnNouveauCompte").addEventListener("click", function () {
+            compteForm.reset();
+            compteFormMessage.textContent = "";
+            compteFormOverlay.classList.add("active");
+        });
+
+        document.getElementById("btnAnnulerCompte").addEventListener("click", function () {
+            compteFormOverlay.classList.remove("active");
+        });
+
+        compteForm.addEventListener("submit", async function (e) {
+            e.preventDefault();
+            compteFormMessage.style.color = "#e63946";
+            compteFormMessage.textContent = "";
+
+            const payload = {
+                nom: document.getElementById("cptNom").value.trim(),
+                telephone: document.getElementById("cptTelephone").value.trim(),
+                email: document.getElementById("cptEmail").value.trim(),
+                motDePasse: document.getElementById("cptMotDePasse").value,
+                role: document.getElementById("cptRole").value
+            };
+
+            const submitBtn = compteForm.querySelector(".btn-primary");
+            submitBtn.disabled = true;
+            submitBtn.textContent = "Création...";
+
+            try {
+                const reponse = await fetch("/api/creer-employe", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify(payload)
+                });
+
+                const resultat = await reponse.json();
+
+                if (!reponse.ok) {
+                    throw new Error(resultat.erreur || "Erreur inconnue");
+                }
+
+                compteFormOverlay.classList.remove("active");
+                chargerComptes();
+            } catch (err) {
+                compteFormMessage.textContent = "Erreur : " + err.message;
+                console.error(err);
+            }
+
+            submitBtn.disabled = false;
+            submitBtn.textContent = "Créer le compte";
         });
 
         /* ---------- SCANNER D'ENTREE ---------- */

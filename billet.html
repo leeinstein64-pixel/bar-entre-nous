@@ -212,6 +212,70 @@
         .payment-btn:hover {
             border-color: #e63946;
         }
+
+        /* ===== SALLE D'ATTENTE ===== */
+
+        .waiting-room {
+            text-align: center;
+            padding: 30px 20px;
+        }
+
+        .waiting-emoji {
+            font-size: 50px;
+            margin-bottom: 20px;
+            letter-spacing: 4px;
+        }
+
+        .waiting-spinner {
+            width: 40px;
+            height: 40px;
+            border: 4px solid #292929;
+            border-top-color: #e63946;
+            border-radius: 50%;
+            margin: 0 auto 25px;
+            animation: spin 1s linear infinite;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        .waiting-room h3 {
+            font-size: 24px;
+            margin-bottom: 12px;
+        }
+
+        .waiting-room > p {
+            color: #999;
+            font-size: 15px;
+            margin-bottom: 30px;
+        }
+
+        .waiting-position-box {
+            background: #0b0b0b;
+            border: 1px solid #292929;
+            border-radius: 12px;
+            padding: 20px;
+            margin-bottom: 25px;
+        }
+
+        .waiting-position {
+            font-size: 48px;
+            font-weight: 800;
+            color: #e63946;
+            line-height: 1;
+            margin-bottom: 8px;
+        }
+
+        .waiting-position-label {
+            color: #999;
+            font-size: 13px;
+        }
+
+        .waiting-footnote {
+            font-size: 13px;
+            color: #777;
+        }
     </style>
 </head>
 
@@ -229,6 +293,23 @@
 
         <div id="notFoundState" class="hidden">
             <p style="color:#e63946;">Cet événement est introuvable ou n'est plus disponible.</p>
+        </div>
+
+        <!-- SALLE D'ATTENTE -->
+        <div id="waitingState" class="hidden">
+            <div class="card waiting-room">
+                <div class="waiting-emoji">🧍🧍🧍🧍🧍</div>
+                <div class="waiting-spinner"></div>
+                <h3>Veuillez patienter, votre tour arrive</h3>
+                <p>Il y a beaucoup de monde en ce moment. Ta place est bien réservée dans la file, ne ferme pas cette page.</p>
+
+                <div class="waiting-position-box">
+                    <div class="waiting-position" id="waitingPosition">—</div>
+                    <div class="waiting-position-label">personne(s) devant toi</div>
+                </div>
+
+                <p class="waiting-footnote">Cette page se met à jour automatiquement toutes les quelques secondes.</p>
+            </div>
         </div>
 
         <div id="mainContent" class="hidden">
@@ -339,6 +420,61 @@
         const evenementId = params.get("evenement");
 
         let zoneActuelle = null;
+        let pollingInterval = null;
+
+        function getSessionToken() {
+            let token = localStorage.getItem("file_attente_token_" + evenementId);
+            if (!token) {
+                token = crypto.randomUUID();
+                localStorage.setItem("file_attente_token_" + evenementId, token);
+            }
+            return token;
+        }
+
+        async function verifierFileAttente() {
+            const { data, error } = await supabaseClient
+                .rpc("verifier_file_attente", {
+                    p_session_token: getSessionToken(),
+                    p_evenement_id: parseInt(evenementId, 10)
+                })
+                .single();
+
+            if (error || !data) {
+                console.error(error);
+                return;
+            }
+
+            if (data.f_statut === "autorise") {
+                if (pollingInterval) {
+                    clearInterval(pollingInterval);
+                    pollingInterval = null;
+                }
+                document.getElementById("waitingState").classList.add("hidden");
+                document.getElementById("mainContent").classList.remove("hidden");
+                return;
+            }
+
+            if (data.f_statut === "expire") {
+                if (pollingInterval) {
+                    clearInterval(pollingInterval);
+                    pollingInterval = null;
+                }
+                document.getElementById("waitingState").innerHTML =
+                    '<div class="card waiting-room"><div class="waiting-emoji">⏱️</div><h3>Ta session a expiré</h3>' +
+                    '<p>Tu as mis trop de temps à finaliser ton achat. Rafraîchis la page pour reprendre une place dans la file.</p></div>';
+                return;
+            }
+
+            // en_attente
+            document.getElementById("waitingPosition").textContent = data.f_position;
+            document.getElementById("loadingState").classList.add("hidden");
+            document.getElementById("waitingState").classList.remove("hidden");
+        }
+
+        function demarrerFileAttente() {
+            verifierFileAttente();
+            pollingInterval = setInterval(verifierFileAttente, 4000);
+        }
 
         async function chargerEvenement() {
             if (!evenementId) {
@@ -388,7 +524,12 @@
             document.getElementById("evtPrix").textContent = formatFCFA(zone.prix);
 
             document.getElementById("loadingState").classList.add("hidden");
-            document.getElementById("mainContent").classList.remove("hidden");
+
+            if (evt.file_attente_active) {
+                demarrerFileAttente();
+            } else {
+                document.getElementById("mainContent").classList.remove("hidden");
+            }
         }
 
         document.getElementById("billetForm").addEventListener("submit", async function (e) {
