@@ -220,10 +220,12 @@
             padding: 30px 20px;
         }
 
-        .waiting-emoji {
-            font-size: 50px;
-            margin-bottom: 20px;
-            letter-spacing: 4px;
+        .waiting-image {
+            width: 100%;
+            max-width: 220px;
+            border-radius: 12px;
+            margin: 0 auto 20px;
+            display: block;
         }
 
         .waiting-spinner {
@@ -298,7 +300,7 @@
         <!-- SALLE D'ATTENTE -->
         <div id="waitingState" class="hidden">
             <div class="card waiting-room">
-                <div class="waiting-emoji">🧍🧍🧍🧍🧍</div>
+                <img class="waiting-image" src="file.png" alt="File d'attente">
                 <div class="waiting-spinner"></div>
                 <h3>Veuillez patienter, votre tour arrive</h3>
                 <p>Il y a beaucoup de monde en ce moment. Ta place est bien réservée dans la file, ne ferme pas cette page.</p>
@@ -460,7 +462,7 @@
                     pollingInterval = null;
                 }
                 document.getElementById("waitingState").innerHTML =
-                    '<div class="card waiting-room"><div class="waiting-emoji">⏱️</div><h3>Ta session a expiré</h3>' +
+                    '<div class="card waiting-room"><div style="font-size:40px; margin-bottom:15px;">⏱️</div><h3>Ta session a expiré</h3>' +
                     '<p>Tu as mis trop de temps à finaliser ton achat. Rafraîchis la page pour reprendre une place dans la file.</p></div>';
                 return;
             }

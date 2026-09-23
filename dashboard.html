@@ -214,7 +214,7 @@
             inset: 0;
             background: rgba(0,0,0,0.75);
             z-index: 2000;
-            align2-items: center;
+            align-items: center;
             justify-content: center;
             padding: 20px;
         }
@@ -307,7 +307,7 @@
             justify-content: space-between;
             align-items: center;
             flex-wrap: wrap;
-            gap: 125px;
+            gap: 15px;
             background: #111;
             border: 1px solid #292929;
             border-radius: 10px;
@@ -617,6 +617,15 @@
                     </div>
                 </div>
 
+                <div id="section-journal" class="section hidden">
+                    <h2>Journal des actions</h2>
+                    <p style="color:#999; margin-bottom:20px;">Qui a fait quoi, et quand. Visible et modifiable uniquement par l'administrateur.</p>
+
+                    <div class="event-list" id="journalList">
+                        <p style="color:#999;">Chargement du journal...</p>
+                    </div>
+                </div>
+
                 <div id="section-scanner" class="section hidden">
                     <h2>Scanner d'entrée</h2>
 
@@ -640,7 +649,7 @@
 
     </div>
 
-    <!-- FORMULAIRE NOUVEL EVENEMENT -->2
+    <!-- FORMULAIRE NOUVEL EVENEMENT -->
     <div class="event-form-overlay" id="eventFormOverlay">
         <div class="event-form-box">
             <h3>Nouvel événement</h3>
@@ -825,7 +834,8 @@
                 { key: "espaces", label: "Tables & Salons" },
                 { key: "billets", label: "Billets" },
                 { key: "paiements", label: "Paiements" },
-                { key: "comptes", label: "Comptes employés" }
+                { key: "comptes", label: "Comptes employés" },
+                { key: "journal", label: "Journal" }
             ],
             manager: [
                 { key: "evenements", label: "Événements" },
@@ -874,6 +884,10 @@
                 chargerComptes();
             }
 
+            if (cle === "journal") {
+                chargerJournal();
+            }
+
             if (cle === "scanner") {
                 demarrerScanner();
             } else {
@@ -902,6 +916,7 @@
         }
 
         let currentProfilId = null;
+        let monProfilRole = null;
 
         async function initDashboard() {
             const { data: sessionData } = await supabaseClient.auth.getSession();
@@ -928,6 +943,7 @@
 
             document.getElementById("userName").textContent = profil.nom;
             document.getElementById("userRole").textContent = profil.role;
+            monProfilRole = profil.role;
 
             try {
                 construireMenu(profil.role);
@@ -1436,7 +1452,86 @@
 
         document.getElementById("btnFiltrerBillets").addEventListener("click", chargerBillets);
 
+        /* ---------- JOURNAL DES ACTIONS ---------- */
+
+        async function chargerJournal() {
+            const listEl = document.getElementById("journalList");
+            listEl.innerHTML = '<p style="color:#999;">Chargement du journal...</p>';
+
+            const { data, error } = await supabaseClient
+                .from("journal_actions")
+                .select("*, profils(nom, role)")
+                .order("horodatage", { ascending: false })
+                .limit(200);
+
+            if (error) {
+                listEl.innerHTML = '<p style="color:#e63946;">Accès refusé ou erreur de chargement.</p>';
+                console.error(error);
+                return;
+            }
+
+            if (!data || data.length === 0) {
+                listEl.innerHTML = '<div class="placeholder">Aucune action enregistrée pour le moment.</div>';
+                return;
+            }
+
+            listEl.innerHTML = "";
+
+            data.forEach(function (entree) {
+                const row = document.createElement("div");
+                row.className = "event-row";
+
+                const auteur = entree.profils || {};
+                const date = new Date(entree.horodatage).toLocaleString("fr-FR");
+
+                row.innerHTML = `
+                    <div class="infos">
+                        <strong>${entree.action}</strong>
+                        <span>${auteur.nom || "Système"} (${auteur.role || "—"}) · ${date}</span>
+                    </div>
+                    <button class="btn-mini" style="background:#333;">Supprimer</button>
+                `;
+
+                row.querySelector(".btn-mini").addEventListener("click", async function () {
+                    if (!confirm("Supprimer définitivement cette ligne du journal ?")) return;
+
+                    const { error: deleteError } = await supabaseClient
+                        .from("journal_actions")
+                        .delete()
+                        .eq("id", entree.id);
+
+                    if (deleteError) {
+                        alert("Suppression refusée.");
+                        console.error(deleteError);
+                        return;
+                    }
+
+                    row.remove();
+                });
+
+                listEl.appendChild(row);
+            });
+        }
+
         /* ---------- COMPTES EMPLOYES ---------- */
+
+        const RANG_ROLE = {
+            administrateur: 4,
+            pdg: 3,
+            manager: 2,
+            caissiere: 1,
+            controleur: 1
+        };
+
+        function rolesAutorisesPourMoi() {
+            const monRang = RANG_ROLE[monProfilRole] || 0;
+            if (monProfilRole === "administrateur") {
+                return Object.keys(RANG_ROLE);
+            }
+            return Object.keys(RANG_ROLE).filter(function (r) {
+                return RANG_ROLE[r] < monRang;
+            });
+        }
 
         async function chargerComptes() {
             const listEl = document.getElementById("compteList");
@@ -1465,13 +1560,7 @@
                         <span>${profil.telephone || ""}</span>
                     </div>
                     <div class="espace-controles">
-                        <select class="input-role">
-                            <option value="pdg" ${profil.role === "pdg" ? "selected" : ""}>PDG</option>
-                            <option value="administrateur" ${profil.role === "administrateur" ? "selected" : ""}>Administrateur</option>
-                            <option value="manager" ${profil.role === "manager" ? "selected" : ""}>Manager</option>
-                            <option value="caissiere" ${profil.role === "caissiere" ? "selected" : ""}>Caissière</option>
-                            <option value="controleur" ${profil.role === "controleur" ? "selected" : ""}>Contrôleur</option>
-                        </select>
+                        <select class="input-role"></select>
                         <select class="input-actif-compte">
                             <option value="true" ${profil.actif ? "selected" : ""}>Actif</option>
                             <option value="false" ${!profil.actif ? "selected" : ""}>Désactivé</option>
@@ -1480,22 +1569,41 @@
                     </div>
                 `;
 
+                remplirOptionsRole(row.querySelector(".input-role"), profil.role);
+
                 const btn = row.querySelector(".btn-mini");
                 const roleSelect = row.querySelector(".input-role");
                 const actifSelect = row.querySelector(".input-actif-compte");
 
                 btn.addEventListener("click", async function () {
                     btn.textContent = "...";
+
+                    const nouveauRole = roleSelect.value;
+                    const nouvelActif = actifSelect.value === "true";
+
                     const { error: updateError } = await supabaseClient
                         .from("profils")
                         .update({
-                            role: roleSelect.value,
-                            actif: actifSelect.value === "true"
+                            role: nouveauRole,
+                            actif: nouvelActif
                         })
                         .eq("id", profil.id);
 
-                    btn.textContent = updateError ? "Erreur" : "✓";
-                    if (!updateError) btn.classList.add("saved");
+                    if (updateError) {
+                        alert("Modification refusée : tu n'as pas le droit de modifier ce compte.");
+                        btn.textContent = "Enregistrer";
+                        console.error(updateError);
+                        return;
+                    }
+
+                    await supabaseClient.from("journal_actions").insert([{
+                        profil_id: currentProfilId,
+                        action: `Modification du compte "${profil.nom}" (rôle: ${nouveauRole}, actif: ${nouvelActif})`,
+                        details: { compte_modifie_id: profil.id, role: nouveauRole, actif: nouvelActif }
+                    }]);
+
+                    btn.textContent = "✓";
+                    btn.classList.add("saved");
                     setTimeout(function () {
                         btn.textContent = "Enregistrer";
                         btn.classList.remove("saved");
@@ -1510,9 +1618,38 @@
         const compteForm = document.getElementById("compteForm");
         const compteFormMessage = document.getElementById("compteFormMessage");
 
+        function remplirOptionsRole(selectEl, roleActuel) {
+            const LABELS_ROLE = {
+                pdg: "PDG", administrateur: "Administrateur", manager: "Manager",
+                caissiere: "Caissière", controleur: "Contrôleur"
+            };
+            const autorises = rolesAutorisesPourMoi();
+            selectEl.innerHTML = "";
+            autorises.forEach(function (r) {
+                const opt = document.createElement("option");
+                opt.value = r;
+                opt.textContent = LABELS_ROLE[r];
+                if (r === roleActuel) opt.selected = true;
+                selectEl.appendChild(opt);
+            });
+            // Si le role actuel n'est pas dans la liste autorisee (ex: on regarde
+            // un compte de rang egal/superieur au sien), on l'ajoute quand meme,
+            // desactive, juste pour l'affichage - la modification sera de toute
+            // facon bloquee par la base de donnees.
+            if (roleActuel && !autorises.includes(roleActuel)) {
+                const opt = document.createElement("option");
+                opt.value = roleActuel;
+                opt.textContent = LABELS_ROLE[roleActuel] + " (non modifiable par toi)";
+                opt.selected = true;
+                selectEl.appendChild(opt);
+                selectEl.disabled = true;
+            }
+        }
+
         document.getElementById("btnNouveauCompte").addEventListener("click", function () {
             compteForm.reset();
             compteFormMessage.textContent = "";
+            remplirOptionsRole(document.getElementById("cptRole"), null);
             compteFormOverlay.classList.add("active");
         });
 
@@ -1538,9 +1675,14 @@
             submitBtn.textContent = "Création...";
 
             try {
+                const { data: sessionData } = await supabaseClient.auth.getSession();
+
                 const reponse = await fetch("/api/creer-employe", {
                     method: "POST",
-                    headers: { "Content-Type": "application/json" },
+                    headers: {
+                        "Content-Type": "application/json",
+                        "Authorization": "Bearer " + sessionData.session.access_token
+                    },
                     body: JSON.stringify(payload)
                 });
 

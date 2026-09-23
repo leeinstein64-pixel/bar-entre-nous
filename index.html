@@ -224,7 +224,7 @@
             font-weight: bold;
         }
 
-       .event-status.past {
+        .event-status.past {
             color: #888;
         }
 
@@ -237,9 +237,9 @@
         }
 
         .event-price {
-            color: white;
+            color: white !important;
             font-weight: bold;
-            margin: 15px 0;
+            margin: 15px 0 !important;
         }
 
         .event-button {
@@ -338,8 +338,12 @@
             background: #1c1414;
         }
 
-        .reservation-icon {
-            font-size: 28px;
+        .reservation-icon-img {
+            width: 56px;
+            height: 56px;
+            border-radius: 10px;
+            object-fit: cover;
+            flex-shrink: 0;
         }
 
         .reservation-type-btn strong {
@@ -848,7 +852,7 @@
                 <button class="reservation-type-btn active"
                         type="button"
                         data-type="table">
-                    <span class="reservation-icon">🥂</span>
+                    <img class="reservation-icon-img" src="table.png" alt="Table">
                     <span>
                         <strong>Réserver une table</strong>
                         <small>Pour vos sorties et moments entre amis</small>
@@ -858,7 +862,7 @@
                 <button class="reservation-type-btn"
                         type="button"
                         data-type="salon">
-                    <span class="reservation-icon">🛋️</span>
+                    <img class="reservation-icon-img" src="salon.png" alt="Salon">
                     <span>
                         <strong>Réserver un salon</strong>
                         <small>Pour vos moments privés et groupes</small>
@@ -1271,6 +1275,8 @@
         const tableOptions = document.getElementById("tableOptions");
         const salonOptions = document.getElementById("salonOptions");
 
+        let tousLesEspaces = [];
+
         async function chargerEspaces() {
             const { data, error } = await supabaseClient
                 .from("tables_salons")
@@ -1285,12 +1291,51 @@
                 return;
             }
 
-            const tables = data.filter(function (e) { return e.type === "table"; });
-            const salons = data.filter(function (e) { return e.type === "salon"; });
+            tousLesEspaces = data;
+            await rafraichirEspacesDisponibles();
+        }
+
+        // Renvoie l'ensemble des id d'espaces deja reserves pour la
+        // date/heure choisies (une reservation annulee ne bloque plus le
+        // creneau, elle est donc exclue de cette liste).
+        async function recupererEspacesOccupes(date, heure) {
+            if (!date || !heure) return new Set();
+
+            const { data, error } = await supabaseClient
+                .from("reservations")
+                .select("table_salon_id")
+                .eq("date_reservation", date)
+                .eq("heure_reservation", heure)
+                .neq("statut", "annulee");
+
+            if (error || !data) return new Set();
+
+            return new Set(data.map(function (r) { return r.table_salon_id; }));
+        }
+
+        async function rafraichirEspacesDisponibles() {
+            const date = reservationDateInput.value;
+            const heure = reservationTimeInput.value;
+            const guests = parseInt(reservationGuestsInput.value, 10) || 0;
+
+            const espacesOccupes = await recupererEspacesOccupes(date, heure);
+
+            const espaceSelectionneAvant = document.querySelector('input[name="space"]:checked');
+            const idSelectionneAvant = espaceSelectionneAvant ? espaceSelectionneAvant.dataset.id : null;
+
+            const tables = tousLesEspaces.filter(function (e) {
+                return e.type === "table" && !espacesOccupes.has(e.id) && (guests === 0 || e.capacite >= guests);
+            });
+            const salons = tousLesEspaces.filter(function (e) {
+                return e.type === "salon" && !espacesOccupes.has(e.id) && (guests === 0 || e.capacite >= guests);
+            });
 
             function construireOptions(container, liste) {
                 if (liste.length === 0) {
-                    container.innerHTML = '<p style="color:#999;">Aucun espace disponible pour l\'instant.</p>';
+                    const raison = guests > 0
+                        ? "Aucun espace libre pour ce nombre de personnes, à cette date et cette heure."
+                        : "Aucun espace disponible à cette date et cette heure.";
+                    container.innerHTML = '<p style="color:#999;">' + raison + '</p>';
                     return;
                 }
 
@@ -1302,7 +1347,8 @@
                     label.innerHTML = `
                         <input type="radio" name="space" value="${espace.identifiant}"
                                data-id="${espace.id}"
-                               data-price="${espace.prix}">
+                               data-price="${espace.prix}"
+                               ${String(espace.id) === idSelectionneAvant ? "checked" : ""}>
                         <span class="space-card">
                             <strong>${espace.identifiant}</strong>
                             <span>Jusqu'à ${espace.capacite} personnes</span>
@@ -1317,6 +1363,8 @@
 
             construireOptions(tableOptions, tables);
             construireOptions(salonOptions, salons);
+
+            updateSummary();
         }
 
         /* ---------- RESERVATION : TYPE TABLE / SALON ---------- */
@@ -1334,10 +1382,6 @@
 
                 tableOptions.classList.toggle("hidden", type !== "table");
                 salonOptions.classList.toggle("hidden", type !== "salon");
-
-                document.querySelectorAll('input[name="space"]').forEach(function (r) {
-                    r.checked = false;
-                });
 
                 updateSummary();
             });
@@ -1381,8 +1425,10 @@
             }
         }
 
+        // Date, heure et nombre de personnes font tous re-filtrer la liste
+        // des espaces (disponibilite + capacite), pas juste le recapitulatif.
         [reservationDateInput, reservationTimeInput, reservationGuestsInput].forEach(function (el) {
-            el.addEventListener("input", updateSummary);
+            el.addEventListener("input", rafraichirEspacesDisponibles);
         });
 
         /* ---------- RESERVATION : ENVOI DU FORMULAIRE ---------- */
