@@ -33,9 +33,10 @@
             border-bottom: 1px solid #222;
         }
 
-        .topbar .brand {
-            font-weight: 800;
-            letter-spacing: 1px;
+        .topbar .brand img {
+            height: 55px;
+            width: auto;
+            display: block;
         }
 
         .topbar .user-info {
@@ -499,7 +500,7 @@
     <div id="dashboard" class="hidden">
 
         <div class="topbar">
-            <div class="brand">ENTRE NOUS BAR</div>
+            <div class="brand"><img src="logo-entre-nous-bar.jpeg" alt="Entre Nous Bar"></div>
 
             <div class="user-info">
                 <span id="userName"></span>
@@ -619,10 +620,39 @@
 
                 <div id="section-journal" class="section hidden">
                     <h2>Journal des actions</h2>
-                    <p style="color:#999; margin-bottom:20px;">Qui a fait quoi, et quand. Visible et modifiable uniquement par l'administrateur.</p>
+                    <p style="color:#999; margin-bottom:20px;">Qui a fait quoi, et quand.</p>
 
                     <div class="event-list" id="journalList">
                         <p style="color:#999;">Chargement du journal...</p>
+                    </div>
+                </div>
+
+                <div id="section-design" class="section hidden">
+                    <h2>Design du site</h2>
+                    <p style="color:#999; margin-bottom:20px;">S'applique immédiatement sur tout le site public.</p>
+
+                    <div class="placeholder" style="max-width:420px;">
+
+                        <div class="form-group">
+                            <label for="designCouleur">Couleur d'accent</label>
+                            <input type="color" id="designCouleur" style="width:100%; height:44px; padding:4px; background:#0b0b0b; border:1px solid #292929; border-radius:8px;">
+                        </div>
+
+                        <div class="form-group">
+                            <label for="designPolice">Police</label>
+                            <select id="designPolice">
+                                <option value="Arial">Arial (classique)</option>
+                                <option value="Georgia">Georgia (élégante)</option>
+                                <option value="'Times New Roman'">Times New Roman (formelle)</option>
+                                <option value="Verdana">Verdana (claire)</option>
+                                <option value="'Trebuchet MS'">Trebuchet MS (moderne)</option>
+                                <option value="'Courier New'">Courier New (machine à écrire)</option>
+                            </select>
+                        </div>
+
+                        <button class="btn-primary" id="btnSauverDesign">Enregistrer</button>
+                        <p class="message" id="designMessage" style="color:#4ade80; margin-top:10px;"></p>
+
                     </div>
                 </div>
 
@@ -826,7 +856,8 @@
                 { key: "espaces", label: "Tables & Salons" },
                 { key: "billets", label: "Billets" },
                 { key: "paiements", label: "Paiements" },
-                { key: "comptes", label: "Comptes employés" }
+                { key: "comptes", label: "Comptes employés" },
+                { key: "journal", label: "Journal" }
             ],
             administrateur: [
                 { key: "evenements", label: "Événements" },
@@ -835,12 +866,14 @@
                 { key: "billets", label: "Billets" },
                 { key: "paiements", label: "Paiements" },
                 { key: "comptes", label: "Comptes employés" },
-                { key: "journal", label: "Journal" }
+                { key: "journal", label: "Journal" },
+                { key: "design", label: "Design du site" }
             ],
             manager: [
                 { key: "evenements", label: "Événements" },
                 { key: "reservations", label: "Réservations" },
-                { key: "espaces", label: "Tables & Salons" }
+                { key: "espaces", label: "Tables & Salons" },
+                { key: "journal", label: "Journal" }
             ],
             caissiere: [
                 { key: "reservations", label: "Réservations" },
@@ -886,6 +919,10 @@
 
             if (cle === "journal") {
                 chargerJournal();
+            }
+
+            if (cle === "design") {
+                chargerDesign();
             }
 
             if (cle === "scanner") {
@@ -1041,11 +1078,56 @@
                         <img class="thumb" src="${evt.affiche_url || ''}" alt="" onerror="this.style.visibility='hidden'">
                         <div class="infos">
                             <strong>${evt.nom}</strong>
-                            <span>${formatDateFr(evt.date_evenement)} à ${evt.heure_evenement.slice(0,5)}${evt.lieu ? " — " + evt.lieu : ""}</span>
+                            <span>${formatDateFr(evt.date_evenement)} à ${evt.heure_evenement.slice(0,5)}${evt.lieu ? " — " + evt.lieu : ""}${evt.archive ? " · Archivé" : ""}</span>
                         </div>
                     </div>
-                    <span class="statut-badge statut-${evt.statut}">${LABELS_STATUT[evt.statut] || evt.statut}</span>
+                    <div style="display:flex; align-items:center; gap:10px; flex-wrap:wrap;">
+                        <span class="statut-badge statut-${evt.statut}">${LABELS_STATUT[evt.statut] || evt.statut}</span>
+                        <button class="btn-mini btn-toggle-file" style="background:${evt.file_attente_active ? '#4ade80' : '#333'}; color:${evt.file_attente_active ? '#08240f' : 'white'};">
+                            Salle d'attente : ${evt.file_attente_active ? "Activée" : "Désactivée"}
+                        </button>
+                        <button class="btn-mini btn-toggle-archive" style="background:${evt.archive ? '#e63946' : '#333'};">
+                            ${evt.archive ? "Désarchiver" : "Archiver"}
+                        </button>
+                    </div>
                 `;
+
+                row.querySelector(".btn-toggle-file").addEventListener("click", async function () {
+                    const nouvelEtat = !evt.file_attente_active;
+                    const { error: toggleError } = await supabaseClient
+                        .from("evenements")
+                        .update({ file_attente_active: nouvelEtat })
+                        .eq("id", evt.id);
+
+                    if (toggleError) {
+                        alert("Erreur lors du changement.");
+                        console.error(toggleError);
+                        return;
+                    }
+
+                    chargerEvenements();
+                });
+
+                row.querySelector(".btn-toggle-archive").addEventListener("click", async function () {
+                    const nouvelEtat = !evt.archive;
+
+                    if (nouvelEtat && !confirm(`Archiver "${evt.nom}" ? Il disparaîtra du site public, mais reste consultable ici.`)) {
+                        return;
+                    }
+
+                    const { error: toggleError } = await supabaseClient
+                        .from("evenements")
+                        .update({ archive: nouvelEtat })
+                        .eq("id", evt.id);
+
+                    if (toggleError) {
+                        alert("Erreur lors du changement.");
+                        console.error(toggleError);
+                        return;
+                    }
+
+                    chargerEvenements();
+                });
 
                 listEl.appendChild(row);
             });
@@ -1489,25 +1571,28 @@
                         <strong>${entree.action}</strong>
                         <span>${auteur.nom || "Système"} (${auteur.role || "—"}) · ${date}</span>
                     </div>
-                    <button class="btn-mini" style="background:#333;">Supprimer</button>
+                    ${monProfilRole === "administrateur" ? '<button class="btn-mini" style="background:#333;">Supprimer</button>' : ""}
                 `;
 
-                row.querySelector(".btn-mini").addEventListener("click", async function () {
-                    if (!confirm("Supprimer définitivement cette ligne du journal ?")) return;
+                const btnSupprimer = row.querySelector(".btn-mini");
+                if (btnSupprimer) {
+                    btnSupprimer.addEventListener("click", async function () {
+                        if (!confirm("Supprimer définitivement cette ligne du journal ?")) return;
 
-                    const { error: deleteError } = await supabaseClient
-                        .from("journal_actions")
-                        .delete()
-                        .eq("id", entree.id);
+                        const { error: deleteError } = await supabaseClient
+                            .from("journal_actions")
+                            .delete()
+                            .eq("id", entree.id);
 
-                    if (deleteError) {
-                        alert("Suppression refusée.");
-                        console.error(deleteError);
-                        return;
-                    }
+                        if (deleteError) {
+                            alert("Suppression refusée.");
+                            console.error(deleteError);
+                            return;
+                        }
 
-                    row.remove();
-                });
+                        row.remove();
+                    });
+                }
 
                 listEl.appendChild(row);
             });
@@ -1554,6 +1639,20 @@
                 const row = document.createElement("div");
                 row.className = "event-row";
 
+                const peutGerer = monProfilRole === "administrateur" || rolesAutorisesPourMoi().includes(profil.role);
+
+                if (!peutGerer) {
+                    row.innerHTML = `
+                        <div class="infos">
+                            <strong>${profil.nom}</strong>
+                            <span>${profil.telephone || ""}</span>
+                        </div>
+                        <span class="statut-badge" style="background:#333; color:#999;">Non modifiable</span>
+                    `;
+                    listEl.appendChild(row);
+                    return;
+                }
+
                 row.innerHTML = `
                     <div class="infos">
                         <strong>${profil.nom}</strong>
@@ -1581,18 +1680,19 @@
                     const nouveauRole = roleSelect.value;
                     const nouvelActif = actifSelect.value === "true";
 
-                    const { error: updateError } = await supabaseClient
+                    const { data: updateData, error: updateError } = await supabaseClient
                         .from("profils")
                         .update({
                             role: nouveauRole,
                             actif: nouvelActif
                         })
-                        .eq("id", profil.id);
+                        .eq("id", profil.id)
+                        .select();
 
-                    if (updateError) {
+                    if (updateError || !updateData || updateData.length === 0) {
                         alert("Modification refusée : tu n'as pas le droit de modifier ce compte.");
                         btn.textContent = "Enregistrer";
-                        console.error(updateError);
+                        if (updateError) console.error(updateError);
                         return;
                     }
 
@@ -1632,18 +1732,6 @@
                 if (r === roleActuel) opt.selected = true;
                 selectEl.appendChild(opt);
             });
-            // Si le role actuel n'est pas dans la liste autorisee (ex: on regarde
-            // un compte de rang egal/superieur au sien), on l'ajoute quand meme,
-            // desactive, juste pour l'affichage - la modification sera de toute
-            // facon bloquee par la base de donnees.
-            if (roleActuel && !autorises.includes(roleActuel)) {
-                const opt = document.createElement("option");
-                opt.value = roleActuel;
-                opt.textContent = LABELS_ROLE[roleActuel] + " (non modifiable par toi)";
-                opt.selected = true;
-                selectEl.appendChild(opt);
-                selectEl.disabled = true;
-            }
         }
 
         document.getElementById("btnNouveauCompte").addEventListener("click", function () {
@@ -1701,6 +1789,44 @@
 
             submitBtn.disabled = false;
             submitBtn.textContent = "Créer le compte";
+        });
+
+        /* ---------- DESIGN DU SITE ---------- */
+
+        async function chargerDesign() {
+            const { data } = await supabaseClient
+                .from("parametres_site")
+                .select("*")
+                .eq("id", 1)
+                .maybeSingle();
+
+            if (data) {
+                document.getElementById("designCouleur").value = data.couleur_accent;
+                document.getElementById("designPolice").value = data.police;
+            }
+        }
+
+        document.getElementById("btnSauverDesign").addEventListener("click", async function () {
+            const messageEl = document.getElementById("designMessage");
+            messageEl.textContent = "";
+
+            const couleur = document.getElementById("designCouleur").value;
+            const police = document.getElementById("designPolice").value;
+
+            const { error } = await supabaseClient
+                .from("parametres_site")
+                .update({ couleur_accent: couleur, police: police })
+                .eq("id", 1);
+
+            if (error) {
+                messageEl.style.color = "#e63946";
+                messageEl.textContent = "Erreur : modification refusée.";
+                console.error(error);
+                return;
+            }
+
+            messageEl.style.color = "#4ade80";
+            messageEl.textContent = "✓ Enregistré — visible immédiatement sur le site.";
         });
 
         /* ---------- SCANNER D'ENTREE ---------- */

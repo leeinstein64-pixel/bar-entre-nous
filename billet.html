@@ -8,6 +8,10 @@
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 
     <style>
+        :root {
+            --accent: #e63946;
+            --font-site: Arial;
+        }
         * {
             margin: 0;
             padding: 0;
@@ -15,7 +19,7 @@
         }
 
         body {
-            font-family: Arial, sans-serif;
+            font-family: var(--font-site), Arial, sans-serif;
             background: #080808;
             color: white;
             min-height: 100vh;
@@ -40,10 +44,13 @@
         }
 
         .brand {
-            font-size: 22px;
-            font-weight: 800;
-            letter-spacing: 1px;
-            margin-bottom: 30px;
+            margin-bottom: 20px;
+        }
+
+        .brand img {
+            height: 70px;
+            width: auto;
+            display: block;
         }
 
         .event-summary {
@@ -77,7 +84,7 @@
         }
 
         .event-summary-content .prix {
-            color: #e63946;
+            color: var(--accent);
             font-weight: bold;
             font-size: 16px;
             margin-top: 10px;
@@ -118,7 +125,7 @@
 
         .form-group input:focus {
             outline: none;
-            border-color: #e63946;
+            border-color: var(--accent);
         }
 
         .btn-primary {
@@ -126,7 +133,7 @@
             padding: 14px;
             border: none;
             border-radius: 8px;
-            background: #e63946;
+            background: var(--accent);
             color: white;
             font-size: 15px;
             font-weight: bold;
@@ -149,7 +156,7 @@
         }
 
         .message.error {
-            color: #e63946;
+            color: var(--accent);
         }
 
         .hidden {
@@ -210,7 +217,7 @@
         }
 
         .payment-btn:hover {
-            border-color: #e63946;
+            border-color: var(--accent);
         }
 
         /* ===== SALLE D'ATTENTE ===== */
@@ -232,7 +239,7 @@
             width: 40px;
             height: 40px;
             border: 4px solid #292929;
-            border-top-color: #e63946;
+            border-top-color: var(--accent);
             border-radius: 50%;
             margin: 0 auto 25px;
             animation: spin 1s linear infinite;
@@ -264,7 +271,7 @@
         .waiting-position {
             font-size: 48px;
             font-weight: 800;
-            color: #e63946;
+            color: var(--accent);
             line-height: 1;
             margin-bottom: 8px;
         }
@@ -287,14 +294,14 @@
 
         <a href="index.html#evenements" class="back-link">&larr; Retour au site</a>
 
-        <div class="brand">ENTRE NOUS BAR</div>
+        <div class="brand"><img src="logo-entre-nous-bar.jpeg" alt="Entre Nous Bar"></div>
 
         <div id="loadingState">
             <p style="color:#999;">Chargement de l'événement...</p>
         </div>
 
         <div id="notFoundState" class="hidden">
-            <p style="color:#e63946;">Cet événement est introuvable ou n'est plus disponible.</p>
+            <p style="color:var(--accent);">Cet événement est introuvable ou n'est plus disponible.</p>
         </div>
 
         <!-- SALLE D'ATTENTE -->
@@ -406,6 +413,20 @@
 
         const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
+        async function appliquerTheme() {
+            const { data } = await supabaseClient
+                .from("parametres_site")
+                .select("*")
+                .eq("id", 1)
+                .maybeSingle();
+
+            if (data) {
+                document.documentElement.style.setProperty("--accent", data.couleur_accent);
+                document.documentElement.style.setProperty("--font-site", data.police);
+            }
+        }
+        appliquerTheme();
+
         function formatFCFA(montant) {
             return Number(montant).toLocaleString("fr-FR") + " FCFA";
         }
@@ -442,7 +463,20 @@
                 .single();
 
             if (error || !data) {
-                console.error(error);
+                console.error("Erreur salle d'attente :", error);
+
+                if (pollingInterval) {
+                    clearInterval(pollingInterval);
+                    pollingInterval = null;
+                }
+
+                document.getElementById("loadingState").classList.add("hidden");
+                document.getElementById("waitingState").classList.remove("hidden");
+                document.getElementById("waitingState").innerHTML =
+                    '<div class="card waiting-room"><div style="font-size:40px; margin-bottom:15px;">⚠️</div>' +
+                    '<h3>Un problème est survenu</h3>' +
+                    '<p>Impossible de vérifier la file d\'attente pour le moment.</p>' +
+                    '<button class="btn-primary" onclick="window.location.reload()">Réessayer</button></div>';
                 return;
             }
 
@@ -508,7 +542,7 @@
                 document.getElementById("loadingState").classList.add("hidden");
                 document.getElementById("notFoundState").classList.remove("hidden");
                 document.getElementById("notFoundState").innerHTML =
-                    '<p style="color:#e63946;">La billetterie n\'est pas encore configurée pour cet événement. Contacte-nous directement.</p>';
+                    '<p style="color:var(--accent);">La billetterie n\'est pas encore configurée pour cet événement. Contacte-nous directement.</p>';
                 return;
             }
 
@@ -523,7 +557,7 @@
             document.getElementById("evtNom").textContent = evt.nom;
             document.getElementById("evtDate").textContent = formatDateLongueFr(evt.date_evenement);
             document.getElementById("evtHeure").textContent = "À partir de " + evt.heure_evenement.slice(0, 5);
-            document.getElementById("evtPrix").textContent = formatFCFA(zone.prix);
+            document.getElementById("evtPrix").textContent = zone.prix > 0 ? formatFCFA(zone.prix) : "Entrée gratuite";
 
             document.getElementById("loadingState").classList.add("hidden");
 
@@ -574,7 +608,7 @@
             document.getElementById("confReference").textContent = reference;
             document.getElementById("confNom").textContent = nom;
             document.getElementById("confTelephone").textContent = telephone;
-            document.getElementById("confMontant").textContent = formatFCFA(zoneActuelle.prix);
+            document.getElementById("confMontant").textContent = zoneActuelle.prix > 0 ? formatFCFA(zoneActuelle.prix) : "Gratuit";
 
             document.getElementById("confirmationCard").classList.remove("hidden");
         });

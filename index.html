@@ -9,6 +9,10 @@
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 
     <style>
+        :root {
+            --accent: #e63946;
+            --font-site: Arial;
+        }
         * {
             margin: 0;
             padding: 0;
@@ -20,7 +24,7 @@
         }
 
         body {
-            font-family: Arial, sans-serif;
+            font-family: var(--font-site), Arial, sans-serif;
             background: #080808;
             color: white;
             line-height: 1.6;
@@ -48,7 +52,7 @@
         }
 
        .logo img {
-            height: 120px;
+            height: 150px;
             width: auto;
             display: block;
         }
@@ -66,7 +70,7 @@
         }
 
         nav a:hover {
-            color: #e63946;
+            color: var(--accent);
         }
 
         .menu-btn {
@@ -125,7 +129,7 @@
         }
 
         .btn-primary {
-            background: #e63946;
+            background: var(--accent);
             color: white;
         }
 
@@ -192,7 +196,7 @@
 
         .event-card:hover {
             transform: translateY(-5px);
-            border-color: #e63946;
+            border-color: var(--accent);
         }
 
         .event-card > img {
@@ -233,7 +237,7 @@
         }
 
         .event-status.upcoming {
-            color: #e63946;
+            color: #3b82f6;
         }
 
         .event-price {
@@ -248,7 +252,7 @@
             padding: 12px 18px;
             border: none;
             border-radius: 8px;
-            background: #e63946;
+            background: var(--accent);
             color: white;
             font-weight: bold;
             cursor: pointer;
@@ -281,7 +285,7 @@
 
         .section-tag {
             display: inline-block;
-            background: #e63946;
+            background: var(--accent);
             color: white;
             font-size: 12px;
             font-weight: bold;
@@ -330,11 +334,11 @@
         }
 
         .reservation-type-btn:hover {
-            border-color: #e63946;
+            border-color: var(--accent);
         }
 
         .reservation-type-btn.active {
-            border-color: #e63946;
+            border-color: var(--accent);
             background: #1c1414;
         }
 
@@ -377,7 +381,7 @@
             width: 40px;
             height: 40px;
             border-radius: 50%;
-            background: #e63946;
+            background: var(--accent);
             display: flex;
             align-items: center;
             justify-content: center;
@@ -436,7 +440,7 @@
         .form-group input:focus,
         .form-group textarea:focus {
             outline: none;
-            border-color: #e63946;
+            border-color: var(--accent);
         }
 
         .space-options {
@@ -468,7 +472,7 @@
         }
 
         .space-option input:checked + .space-card {
-            border-color: #e63946;
+            border-color: var(--accent);
             background: #1c1414;
         }
 
@@ -511,7 +515,7 @@
         }
 
         .summary-total strong {
-            color: #e63946;
+            color: var(--accent);
         }
 
         .reservation-conditions {
@@ -535,7 +539,7 @@
             padding: 16px;
             border: none;
             border-radius: 8px;
-            background: #e63946;
+            background: var(--accent);
             color: white;
             font-size: 16px;
             font-weight: bold;
@@ -615,8 +619,8 @@
         }
 
         .modal-close:hover {
-            border-color: #e63946;
-            color: #e63946;
+            border-color: var(--accent);
+            color: var(--accent);
         }
 
         /* ===== INFORMATIONS ===== */
@@ -647,7 +651,7 @@
         }
 
         .info a {
-            color: #e63946;
+            color: var(--accent);
             text-decoration: none;
         }
 
@@ -679,7 +683,7 @@
         }
 
         .socials a:hover {
-            color: #e63946;
+            color: var(--accent);
         }
 
         footer p {
@@ -692,6 +696,10 @@
 
             header {
                 padding: 16px 5%;
+            }
+
+            .logo img {
+                height: 70px;
             }
 
             nav {
@@ -783,7 +791,7 @@
             <a href="#evenements">Événements</a>
             <a href="#reservations">Réservations</a>
             <a href="#infos">Infos</a>
-            <a href="login.html" style="color:#e63946;">Espace employé</a>
+            <a href="login.html" style="color:var(--accent);">Espace employé</a>
         </nav>
 
         <button class="menu-btn" onclick="toggleMenu()">
@@ -1166,10 +1174,30 @@
 
         const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
+        async function appliquerTheme() {
+            const { data } = await supabaseClient
+                .from("parametres_site")
+                .select("*")
+                .eq("id", 1)
+                .maybeSingle();
+
+            if (data) {
+                document.documentElement.style.setProperty("--accent", data.couleur_accent);
+                document.documentElement.style.setProperty("--font-site", data.police);
+            }
+        }
+        appliquerTheme();
+
         function toggleMenu() {
             const nav = document.getElementById("nav");
             nav.classList.toggle("active");
         }
+
+        document.querySelectorAll("#nav a").forEach(function (lien) {
+            lien.addEventListener("click", function () {
+                document.getElementById("nav").classList.remove("active");
+            });
+        });
 
         /* ---------- MODAL ---------- */
 
@@ -1198,13 +1226,6 @@
 
         /* ---------- EVENEMENTS PUBLICS ---------- */
 
-        const LABELS_STATUT_EVT = {
-            publie: { classe: "upcoming", texte: "À venir" },
-            billetterie_ouverte: { classe: "current", texte: "Billetterie ouverte" },
-            billetterie_fermee: { classe: "past", texte: "Billetterie fermée" },
-            termine: { classe: "past", texte: "Événement terminé" }
-        };
-
         const JOURS_FR = ["Dimanche", "Lundi", "Mardi", "Mercredi", "Jeudi", "Vendredi", "Samedi"];
         const MOIS_FR = ["janvier", "février", "mars", "avril", "mai", "juin", "juillet", "août", "septembre", "octobre", "novembre", "décembre"];
 
@@ -1213,16 +1234,35 @@
             return `${JOURS_FR[d.getDay()]} ${d.getDate()} ${MOIS_FR[d.getMonth()]} ${d.getFullYear()}`;
         }
 
+        function calculerStatutAffiche(evt) {
+            const aujourdHui = new Date().toISOString().split("T")[0];
+
+            if (evt.date_evenement < aujourdHui) {
+                return { classe: "past", texte: "Événement terminé", estTermine: true };
+            }
+
+            if (evt.date_evenement === aujourdHui) {
+                return { classe: "current", texte: "En cours", estTermine: false };
+            }
+
+            // Evenement a venir : on regarde quand meme le statut de billetterie
+            if (evt.statut === "billetterie_fermee") {
+                return { classe: "past", texte: "Billetterie fermée", estTermine: true };
+            }
+            return { classe: "upcoming", texte: "À venir", estTermine: false };
+        }
+
         async function chargerEvenementsPublics() {
             const grid = document.getElementById("eventGrid");
 
             const { data, error } = await supabaseClient
                 .from("evenements")
                 .select("*")
+                .eq("archive", false)
                 .order("date_evenement", { ascending: true });
 
             if (error) {
-                grid.innerHTML = '<p style="color:#e63946;">Impossible de charger les événements pour le moment.</p>';
+                grid.innerHTML = '<p style="color:var(--accent);">Impossible de charger les événements pour le moment.</p>';
                 console.error(error);
                 return;
             }
@@ -1235,11 +1275,17 @@
             grid.innerHTML = "";
 
             data.forEach(function (evt) {
-                const infosStatut = LABELS_STATUT_EVT[evt.statut] || { classe: "upcoming", texte: "À venir" };
-                const estTermine = evt.statut === "termine" || evt.statut === "billetterie_fermee";
-                const prixTexte = evt.prix_a_partir_de
+                const infosStatut = calculerStatutAffiche(evt);
+                const estTermine = infosStatut.estTermine;
+                const estGratuit = !evt.prix_a_partir_de || Number(evt.prix_a_partir_de) === 0;
+                const boutonDesactive = estTermine || estGratuit;
+                const prixTexte = !estGratuit
                     ? "Billet à partir de " + formatFCFA(Number(evt.prix_a_partir_de))
                     : "Entrée gratuite";
+
+                let texteBouton = "Acheter un billet";
+                if (estTermine) texteBouton = infosStatut.texte;
+                else if (estGratuit) texteBouton = "Entrée gratuite";
 
                 const card = document.createElement("div");
                 card.className = "event-card";
@@ -1252,13 +1298,13 @@
                         <p>${formatDateLongueFr(evt.date_evenement)}</p>
                         <p>À partir de ${evt.heure_evenement.slice(0,5)}</p>
                         <p class="event-price">${prixTexte}</p>
-                        <button class="event-button" ${estTermine ? "disabled" : ""}>
-                            ${estTermine ? infosStatut.texte : "Acheter un billet"}
+                        <button class="event-button" ${boutonDesactive ? "disabled" : ""}>
+                            ${texteBouton}
                         </button>
                     </div>
                 `;
 
-                if (!estTermine) {
+                if (!boutonDesactive) {
                     card.querySelector(".event-button").addEventListener("click", function () {
                         window.location.href = "billet.html?evenement=" + evt.id;
                     });
@@ -1285,8 +1331,8 @@
                 .order("identifiant", { ascending: true });
 
             if (error || !data) {
-                tableOptions.innerHTML = '<p style="color:#e63946;">Impossible de charger les tables.</p>';
-                salonOptions.innerHTML = '<p style="color:#e63946;">Impossible de charger les salons.</p>';
+                tableOptions.innerHTML = '<p style="color:var(--accent);">Impossible de charger les tables.</p>';
+                salonOptions.innerHTML = '<p style="color:var(--accent);">Impossible de charger les salons.</p>';
                 console.error(error);
                 return;
             }
